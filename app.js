@@ -38,7 +38,7 @@ function route(){
  const [p,arg]=(location.hash.slice(1)||'home').split('/');
  $('#side').classList.remove('open');
  document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===p||(p==='certificato'&&a.dataset.p==='quiz')));
- ({home,impara,quiz,giochi,forum,podcast,scanner,certificato})[p]?.(arg)??home();
+ const R={home,impara,quiz,giochi,forum,podcast,scanner,certificato};(R[p]||home)(arg);
  scrollTo(0,0);
 }
 addEventListener('hashchange',route);
@@ -53,49 +53,60 @@ addEventListener('beforeinstallprompt',e=>{e.preventDefault();window._dp=e});
 /* ===== IMPARA ===== */
 function impara(id){
  if(!id)return app.innerHTML=`<h1>IMPARA</h1><p class="sub">Scegli un argomento: video, consigli di Shieldo e quiz.</p>${SC('Ogni video ti dà un superpotere contro i pericoli del web.')}<div class="grid">${TOPICS.map(t=>`<a class="card" href="#impara/${t.id}" style="text-decoration:none;color:inherit"><span class="tag">${t.cat}</span><h3>${t.title}</h3><p>${t.desc}</p><span class="btn">GUARDA →</span></a>`).join('')}</div>`;
- const t=TOPICS.find(x=>x.id===id)||TOPICS[0], local=t.yt.includes('.');
- const player=!t.yt?`<div class="card"><p>Video non ancora collegato. Inserisci l'ID YouTube in <code>app.js</code> (campo <code>yt</code>) oppure cerca un video su questo tema.</p><a class="btn" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=${encodeURIComponent(t.q)}">▶ CERCA SU YOUTUBE</a></div>`
- :local?`<video class="vid" controls src="${esc(t.yt)}"></video>`:`<iframe class="vid" src="https://www.youtube-nocookie.com/embed/${esc(t.yt)}" allowfullscreen loading="lazy"></iframe>`;
- app.innerHTML=`<a href="#impara" style="color:var(--mu)">← Tutti i video</a><div class="two"><div><span class="tag">${t.cat}</span><h1>${t.title}</h1><p class="sub">${t.desc}</p>${player}</div><div><div class="card"><span class="tag">I consigli di Shieldo</span><ul class="tips">${t.tips.map(x=>`<li>🛡️ ${x}</li>`).join('')}</ul></div><div class="card" style="margin-top:16px"><span class="tag">Metti alla prova</span><p>Quiz disponibile: ${t.quiz.t}</p><a class="btn" href="#quiz/${t.id}">📝 FAI IL QUIZ</a></div></div></div>`}
+ const t=TOPICS.find(x=>x.id===id)||TOPICS[0], url=LS('vid_'+t.id,'')||t.yt;
+ app.innerHTML=`<a href="#impara" style="color:var(--mu)">← Tutti i video</a><div class="two"><div><span class="tag">${t.cat}</span><h1>${t.title}</h1><p class="sub">${t.desc}</p>${player(url)}<div class="card" style="margin-top:14px"><b>🔗 Link video</b><p style="margin:4px 0">Incolla un link YouTube oppure un file .mp4 (es. da GitHub).</p><input id="vu" placeholder="https://..." value="${esc(LS('vid_'+t.id,''))}"><button class="btn" id="vs">COLLEGA VIDEO</button><button class="btn g" id="vr">Rimuovi</button><a class="btn g" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=${encodeURIComponent(t.q)}">Cerca su YouTube</a></div></div><div><div class="card"><span class="tag">I consigli di Shieldo</span><ul class="tips">${t.tips.map(x=>`<li>🛡️ ${x}</li>`).join('')}</ul></div><div class="card" style="margin-top:16px"><span class="tag">Metti alla prova</span><p>Quiz disponibile: ${t.quiz.t}</p><a class="btn" href="#quiz/${t.id}">📝 FAI IL QUIZ</a></div></div></div>`;
+ $('#vs').onclick=()=>{const v=$('#vu').value.trim();if(!v)return;SV('vid_'+t.id,v);impara(id)};
+ $('#vr').onclick=()=>{SV('vid_'+t.id,'');impara(id)}}
+function player(u){if(!u)return'<div class="card"><p>Nessun video collegato: incolla un link qui sotto.</p></div>';
+ const m=u.match(/(?:youtu\.be\/|[?&]v=|embed\/|shorts\/)([\w-]{11})/)||(/^[\w-]{11}$/.test(u)?[0,u]:null);
+ return m?`<iframe class="vid" src="https://www.youtube-nocookie.com/embed/${m[1]}" allow="encrypted-media;picture-in-picture;fullscreen" allowfullscreen></iframe>`:`<video class="vid" controls playsinline src="${esc(u)}"></video>`}
 
-/* ===== QUIZ + CERTIFICATO ===== */
+/* ===== QUIZ + CERTIFICATO (punteggio massimo 100) ===== */
 const PASS=70;
 function quiz(id){
  const res=LS('res',{});
- if(!id)return app.innerHTML=`<h1>QUIZ</h1><p class="sub">Supera il quiz con almeno ${PASS}% per ottenere il certificato.</p>${SC('Non aver paura di sbagliare: ogni errore è una lezione.')}<div class="grid">${TOPICS.map(t=>`<div class="card"><span class="tag">${t.cat}</span><h3>${t.quiz.t}</h3><p>${t.quiz.qs.length} domande${res[t.id]!=null?` · Miglior risultato: <b>${res[t.id]}%</b>`:''}</p><a class="btn" href="#quiz/${t.id}">INIZIA</a>${res[t.id]>=PASS?`<a class="btn g" href="#certificato/${t.id}">🏅 Certificato</a>`:''}</div>`).join('')}</div>`;
- const t=TOPICS.find(x=>x.id===id)||TOPICS[0],qs=t.quiz.qs;let i=0,ok=0;
+ if(!id)return app.innerHTML=`<h1>QUIZ</h1><p class="sub">Rispondi alle domande: il punteggio massimo è 100. Con almeno ${PASS} ottieni il certificato.</p>${SC('Non aver paura di sbagliare: ogni errore è una lezione.')}<div class="grid">${TOPICS.map(t=>`<div class="card"><span class="tag">${t.cat}</span><h3>${t.quiz.t}</h3><p>${t.quiz.qs.length} domande${res[t.id]!=null?` · Miglior risultato: <b>${res[t.id]}/100</b>`:''}</p><a class="btn" href="#quiz/${t.id}">INIZIA</a>${res[t.id]>=PASS?`<a class="btn g" href="#certificato/${t.id}">🏅 Certificato</a>`:''}</div>`).join('')}</div>`;
+ const t=TOPICS.find(x=>x.id===id)||TOPICS[0],qs=t.quiz.qs;let i=0,ok=0,bad=[];
  const step=()=>{
   if(i>=qs.length){const pc=Math.round(ok/qs.length*100);res[t.id]=Math.max(res[t.id]||0,pc);SV('res',res);
-   return app.innerHTML=`<h1>${pc>=PASS?'🎉 Bravo!':'💪 Quasi!'}</h1><div class="card"><h2>${ok}/${qs.length} risposte giuste — ${pc}%</h2><p>${pc>=PASS?'Hai superato il quiz: puoi scaricare il tuo certificato!':`Servono almeno ${PASS}% per il certificato. Rivedi il video e riprova.`}</p>${pc>=PASS?`<a class="btn" href="#certificato/${t.id}">🏅 OTTIENI CERTIFICATO</a>`:`<a class="btn g" href="#impara/${t.id}">▶ Rivedi il video</a>`}<button class="btn" onclick="quiz('${t.id}')">Riprova</button><a class="btn g" href="#quiz">Altri quiz</a></div>`}
+   return app.innerHTML=`<h1>${pc>=PASS?'🎉 Bravo!':'💪 Quasi!'}</h1><div class="card"><h2>${ok}/${qs.length} risposte giuste — punteggio ${pc}/100</h2><p>${pc>=PASS?'Hai superato il quiz: puoi ottenere il tuo certificato!':`Servono almeno ${PASS}/100 per il certificato. Rivedi il video e riprova.`}</p>${pc>=PASS?`<a class="btn" href="#certificato/${t.id}">🏅 OTTIENI CERTIFICATO</a>`:`<a class="btn g" href="#impara/${t.id}">▶ Rivedi il video</a>`}<button class="btn" id="rt">Riprova</button><a class="btn g" href="#video-q">Altri quiz</a></div>${bad.length?`<div class="card" style="margin-top:14px"><span class="tag">Da ripassare</span>${bad.map(b=>`<p style="margin:8px 0">• ${esc(b[0])}<br><b style="color:var(--te)">Risposta giusta: ${esc(b[1])}</b></p>`).join('')}</div>`:''}`,
+   ($('#rt').onclick=()=>quiz(t.id),document.querySelector('a[href="#video-q"]').href='#quiz')}
   const [q,o,c]=qs[i];
   app.innerHTML=`<span class="tag">${t.quiz.t} · ${i+1}/${qs.length}</span><div class="bar"><i style="width:${i/qs.length*100}%"></i></div><h1 style="font-size:28px">${q}</h1>${o.map((x,k)=>`<button class="opt" data-k="${k}">${esc(x)}</button>`).join('')}<div id="fb"></div>`;
-  app.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const k=+b.dataset.k;app.querySelectorAll('.opt').forEach((x,j)=>{x.disabled=true;if(j===c)x.classList.add('ok')});if(k===c)ok++;else b.classList.add('no');
+  app.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const k=+b.dataset.k;app.querySelectorAll('.opt').forEach((x,j)=>{x.disabled=true;if(j===c)x.classList.add('ok')});if(k===c)ok++;else{b.classList.add('no');bad.push([q,o[c]])}
    $('#fb').innerHTML=`<p>${k===c?'✅ Esatto!':'❌ Non proprio: la risposta giusta è evidenziata.'}</p><button class="btn" id="nx">${i+1<qs.length?'Avanti →':'Vedi risultato'}</button>`;$('#nx').onclick=()=>{i++;step()}})};
- window.quiz=quiz; step()}
+ step()}
 function certificato(id){
  const t=TOPICS.find(x=>x.id===id)||TOPICS[0],pc=LS('res',{})[t.id];
- if(pc==null||pc<PASS){app.innerHTML=`<h1>Certificato</h1><div class="card"><p>Supera prima il quiz per sbloccarlo.</p><a class="btn" href="#quiz/${t.id}">Fai il quiz</a></div>`;return}
- app.innerHTML=`<h1>Il tuo certificato</h1><p class="sub">Scrivi il tuo nome e scaricalo.</p><input id="nm" maxlength="30" placeholder="Il tuo nome" value="${esc(LS('name','Giovane Difensore'))}"><canvas id="cv" width="1000" height="700"></canvas><br><button class="btn" id="dl">⬇ SCARICA IL CERTIFICATO</button><a class="btn g" href="#quiz">Altri quiz</a>`;
+ if(pc==null||pc<PASS){app.innerHTML=`<h1>Certificato</h1><div class="card"><p>Supera prima il quiz (almeno ${PASS}/100) per sbloccarlo.</p><a class="btn" href="#quiz/${t.id}">Fai il quiz</a></div>`;return}
+ app.innerHTML=`<h1>Il tuo certificato</h1><p class="sub">Scrivi il tuo nome, poi scaricalo.</p><input id="nm" maxlength="30" placeholder="Scrivi il tuo nome" value="${esc(LS('name',''))}"><canvas id="cv" width="1000" height="700"></canvas><br><button class="btn" id="dl">⬇ SCARICA IL CERTIFICATO</button><a class="btn g" href="#quiz">Altri quiz</a>
+ <div class="card" style="margin-top:20px"><span class="tag">Il tuo attestato</span><h3>Carica un PDF o un’immagine</h3><p>Carica il tuo attestato (PDF o immagine) per tenerlo qui e rivederlo quando vuoi.</p><input type="file" id="up" accept="image/*,application/pdf"><div id="upv"></div></div>`;
  const cv=$('#cv'),x=cv.getContext('2d');
- const draw=()=>{const n=$('#nm').value.trim()||'Giovane Difensore';SV('name',n);
+ const draw=()=>{const n=$('#nm').value.trim()||'Giovane Difensore';SV('name',$('#nm').value.trim());
   x.fillStyle='#000';x.fillRect(0,0,1000,700);x.strokeStyle='#fb923c';x.lineWidth=10;x.strokeRect(20,20,960,660);x.lineWidth=2;x.strokeRect(45,45,910,610);
   x.textAlign='center';x.fillStyle='#fb923c';x.font='bold 60px sans-serif';x.fillText('🛡️',500,130);x.font='900 34px sans-serif';x.fillText('SHIELDO',500,175);
   x.fillStyle='#9aa4cc';x.font='16px sans-serif';x.fillText('A T T E S T A T O   N O N   U F F I C I A L E',500,215);
   x.fillStyle='#fb923c';x.font='900 54px sans-serif';x.fillText('CERTIFICATO DI SCUDO',500,285);
   x.fillStyle='#fff';x.font='20px sans-serif';x.fillText('conferito a',500,340);x.font='bold 46px sans-serif';x.fillText(n,500,400);
   x.font='20px sans-serif';x.fillStyle='#cbd5ff';x.fillText('per aver superato il quiz “'+t.quiz.t+'”',500,450);x.fillText('e per aver costruito il proprio scudo contro le minacce del web.',500,480);
-  x.strokeStyle='#fb923c';x.lineWidth=2;x.beginPath();x.roundRect(380,515,240,60,30);x.stroke();x.fillStyle='#fb923c';x.font='bold 26px sans-serif';x.fillText(pc+'% SUPERATO',500,555);
+  x.strokeStyle='#fb923c';x.lineWidth=2;x.beginPath();x.roundRect(370,515,260,60,30);x.stroke();x.fillStyle='#fb923c';x.font='bold 26px sans-serif';x.fillText(pc+'/100 SUPERATO',500,555);
   x.textAlign='right';x.fillStyle='#9aa4cc';x.font='20px sans-serif';x.fillText(new Date().toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}),930,630)};
  draw();$('#nm').oninput=draw;
- $('#dl').onclick=()=>{const a=document.createElement('a');a.download='certificato-shieldo.png';a.href=cv.toDataURL('image/png');a.click()}}
+ $('#dl').onclick=()=>{const a=document.createElement('a');a.download='certificato-shieldo.png';a.href=cv.toDataURL('image/png');a.click()};
+ const showUp=(d)=>{$('#upv').innerHTML=d.startsWith('data:application/pdf')?`<embed src="${d}" type="application/pdf" style="width:100%;height:520px;border-radius:12px;margin-top:10px"><br><button class="btn g" id="ud">Rimuovi</button>`:`<img src="${d}" style="max-width:100%;border-radius:12px;margin-top:10px"><br><button class="btn g" id="ud">Rimuovi</button>`;$('#ud').onclick=()=>{SV('up_'+t.id,'');$('#upv').innerHTML='';$('#up').value=''}};
+ const old=LS('up_'+t.id,'');if(old)showUp(old);
+ $('#up').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{showUp(r.result);SV('up_'+t.id,r.result)};r.readAsDataURL(f)}}
 
-/* ===== PODCAST (voce sintetica del browser; opzionale: aggiungi file audio) ===== */
+/* ===== PODCAST: per audio veri metti i link (mp3 da GitHub) in AUDIO, uno per episodio; se vuoto parla la voce del dispositivo ===== */
+const AUDIO=['','','','',''];
 function podcast(){
- app.innerHTML=`<section class="hero" style="grid-template-columns:1fr"><div><span class="pill">🎙️ PODCAST</span><h1>Le avventure di <span style="color:var(--or)">Scudo</span></h1><p class="sub">Episodi brevi da ascoltare con le cuffie: storie, trucchi e consigli per difenderti online mentre sei in cammino o prima di dormire.</p></div></section><h2>TUTTI GLI EPISODI</h2>${EPS.map((e,i)=>`<div class="card ep"><button class="play" data-i="${i}">▶</button><div><span class="tag">Episodio ${i+1}</span><h3 style="margin:2px 0">${e[0]}</h3><span style="color:var(--mu)">${e[1]}</span></div></div>`).join('')}<p class="sub">Gli episodi sono letti dalla voce italiana del tuo dispositivo.</p>`;
- let cur=-1;const bs=app.querySelectorAll('.play');
- const reset=()=>bs.forEach(b=>b.textContent='▶');
- bs.forEach(b=>b.onclick=()=>{const i=+b.dataset.i;speechSynthesis.cancel();reset();if(cur===i){cur=-1;return}
-  cur=i;b.textContent='⏸';const u=new SpeechSynthesisUtterance(EPS[i][2]);u.lang='it-IT';u.rate=.95;u.onend=()=>{reset();cur=-1};speechSynthesis.speak(u)})}
+ app.innerHTML=`<section class="hero" style="grid-template-columns:1fr"><div><span class="pill">🎙️ PODCAST</span><h1>Le avventure di <span style="color:var(--or)">Scudo</span></h1><p class="sub">Episodi brevi da ascoltare con le cuffie: storie, trucchi e consigli per difenderti online mentre sei in cammino o prima di dormire.</p></div></section><h2>TUTTI GLI EPISODI</h2>${EPS.map((e,i)=>`<div class="card ep"><button class="play" data-i="${i}">▶</button><div><span class="tag">Episodio ${i+1}</span><h3 style="margin:2px 0">${e[0]}</h3><span style="color:var(--mu)">${e[1]}</span></div></div>`).join('')}`;
+ let cur=-1,au=null;const bs=app.querySelectorAll('.play'),reset=()=>bs.forEach(b=>b.textContent='▶');
+ const halt=()=>{speechSynthesis.cancel();if(au){au.pause();au=null}reset()};stopFn=halt;
+ bs.forEach(b=>b.onclick=()=>{const i=+b.dataset.i;const same=cur===i;halt();if(same){cur=-1;return}
+  cur=i;b.textContent='⏸';const end=()=>{reset();cur=-1};
+  if(AUDIO[i]){au=new Audio(AUDIO[i]);au.onended=end;au.onerror=end;au.play().catch(end)}
+  else{if(!('speechSynthesis' in window)){end();return alert('Il tuo browser non supporta la voce.')}const u=new SpeechSynthesisUtterance(EPS[i][2]);u.lang='it-IT';u.rate=.95;u.onend=end;u.onerror=end;speechSynthesis.speak(u)}})}
 
 /* ===== FORUM ===== */
 function forum(){
@@ -125,18 +136,22 @@ function giochi(g){
   let i=0,ok=0;const s=()=>{if(i>=R.length){if(ok>sc.esc){sc.esc=ok;SV('sc',sc)}return app.innerHTML=`${back}<h1>${ok===4?'🎉 Sei fuori!':'Fine'}</h1><p class="sub">Stanze superate: ${ok}/4</p><button class="btn" onclick="giochi('esc')">Riprova</button>`}
    app.innerHTML=`${back}<h1>ESCAPE ROOM</h1><div class="bar"><i style="width:${i*25}%"></i></div><h2>${R[i][0]}</h2>${R[i][1].map((o,k)=>`<button class="opt" data-k="${k}">${o}</button>`).join('')}<div id="fb"></div>`;
    app.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const g=+b.dataset.k===R[i][2];if(g)ok++;app.querySelectorAll('.opt').forEach(x=>x.disabled=true);b.classList.add(g?'ok':'no');$('#fb').innerHTML=`<p>${g?'🔓 Porta aperta!':'🚪 Trappola! La scelta giusta era un’altra.'}</p><button class="btn" id="nx">Avanti →</button>`;$('#nx').onclick=()=>{i++;s()}})};window.giochi=giochi;s()}
- if(g==='run'){app.innerHTML=`${back}<h1>SCUDO RUNNER</h1><p class="sub">Premi SPAZIO o tocca lo schermo per saltare. Punti: <b id="pt">0</b> · Record: ${sc.run}</p><canvas id="c" width="800" height="300" style="width:100%;touch-action:none"></canvas><br><button class="btn" id="rs">RICOMINCIA</button>`;
-  const c=$('#c'),x=c.getContext('2d');let y,v,ob,t,sp,over,raf,fr;
-  const init=()=>{y=220;v=0;ob=[];t=0;sp=5;over=false;fr=0;loop()};
-  const jump=e=>{e&&e.preventDefault&&e.preventDefault();if(over)return;if(y>=220)v=-13};
-  const key=e=>{if(e.code==='Space')jump(e)};addEventListener('keydown',key);c.addEventListener('pointerdown',jump);$('#rs').onclick=()=>{cancelAnimationFrame(raf);init()};
-  stopFn=()=>{cancelAnimationFrame(raf);removeEventListener('keydown',key)};
-  const E=['🦠','🎣','⚠️','🔗'];
-  function loop(){fr++;v+=.7;y=Math.min(220,y+v);if(y>=220)v=0;t++;if(t%Math.max(45,95-sp*4)===0)ob.push({x:820,e:E[Math.random()*4|0]});
-   ob.forEach(o=>o.x-=sp);ob=ob.filter(o=>o.x>-40);sp+=.002;
-   x.fillStyle='#0b1020';x.fillRect(0,0,800,300);x.fillStyle='#2dd4bf';x.fillRect(0,262,800,3);x.font='44px serif';x.fillText('🛡️',60,y+40);
-   ob.forEach(o=>{x.fillText(o.e,o.x,262)});
-   if(ob.some(o=>o.x<100&&o.x>45&&y>195)){over=true;const s=Math.floor(fr/6);if(s>sc.run){sc.run=s;SV('sc',sc)}x.fillStyle='#fff';x.font='bold 34px sans-serif';x.fillText('Preso! Punti: '+s,270,140);return}
+ if(g==='run'){app.innerHTML=`${back}<h1>SCUDO RUNNER</h1><p class="sub">Punti: <b id="pt">0</b> · 🏆 record <b>${sc.run}</b></p><div class="two"><div><canvas id="c" width="420" height="600" style="width:100%;max-width:420px;background:#000;touch-action:none;display:block"></canvas><div style="display:flex;gap:10px;max-width:420px;margin-top:10px"><button class="btn g" id="bl" style="flex:1">◀ Sinistra</button><button class="btn g" id="br" style="flex:1">Destra ▶</button></div></div><div>${SC('Schiva le truffe e resta in corsa: ogni punto è un pericolo riconosciuto in più. Usa le frecce, A/D, i pulsanti o tocca il lato sinistro/destro.')}<button class="btn" id="rs">RICOMINCIA</button></div></div>`;
+  const c=$('#c'),x=c.getContext('2d'),L=[0,140,280],N=['TRUFFA','VIRUS','FALSO LINK','PHISHING','FAKE'];let ln,ob,fr,sp,over,raf;
+  const rr=(a,b,w,h,f,st,txt,col)=>{x.beginPath();x.roundRect(a,b,w,h,16);x.fillStyle=f;x.fill();x.lineWidth=3;x.strokeStyle=st;x.stroke();x.fillStyle=col;x.font='bold 14px sans-serif';x.textAlign='center';x.fillText(txt,a+w/2,b+h/2+5)};
+  const init=()=>{cancelAnimationFrame(raf);ln=1;ob=[];fr=0;sp=4;over=false;loop()};
+  const mv=d=>{if(!over)ln=Math.max(0,Math.min(2,ln+d))};
+  const key=e=>{if(['ArrowLeft','a','A'].includes(e.key)){mv(-1);e.preventDefault()}if(['ArrowRight','d','D'].includes(e.key)){mv(1);e.preventDefault()}};
+  addEventListener('keydown',key);stopFn=()=>{cancelAnimationFrame(raf);removeEventListener('keydown',key)};
+  $('#bl').onclick=()=>mv(-1);$('#br').onclick=()=>mv(1);$('#rs').onclick=init;
+  c.addEventListener('pointerdown',e=>{const r=c.getBoundingClientRect();mv(e.clientX-r.left<r.width/2?-1:1)});
+  function loop(){fr++;sp=4+fr/500;
+   if(fr%Math.max(28,70-Math.floor(fr/60))===0){const a=Math.random()*3|0,l=[a];if(Math.random()<.35)l.push((a+1+(Math.random()*2|0))%3);l.forEach(k=>ob.push({l:k,y:-80,n:N[Math.random()*5|0]}))}
+   ob.forEach(o=>o.y+=sp);ob=ob.filter(o=>o.y<620);
+   x.fillStyle='#000';x.fillRect(0,0,420,600);x.strokeStyle='#1f2747';x.lineWidth=1;[140,280].forEach(v=>{x.beginPath();x.moveTo(v,0);x.lineTo(v,600);x.stroke()});
+   ob.forEach(o=>rr(L[o.l]+22,o.y,96,72,'#3a0a1c','#f43f5e',o.n,'#fff'));
+   rr(L[ln]+22,500,96,80,'#3a1c06','#fb923c','SCUDO','#fb923c');
+   if(ob.some(o=>o.l===ln&&o.y+72>505&&o.y<578)){over=true;const s=Math.floor(fr/6);if(s>sc.run){sc.run=s;SV('sc',sc)}x.fillStyle='#000c';x.fillRect(0,230,420,130);x.fillStyle='#fff';x.font='bold 30px sans-serif';x.textAlign='center';x.fillText('Preso! Punti: '+s,210,285);x.font='16px sans-serif';x.fillText('Premi RICOMINCIA',210,320);return}
    $('#pt').textContent=Math.floor(fr/6);raf=requestAnimationFrame(loop)}
   init()}}
 
