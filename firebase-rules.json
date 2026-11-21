@@ -1,0 +1,38 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "nicks": {
+      ".read": true,
+      "$n": {
+        ".write": "!data.exists()",
+        ".validate": "newData.hasChildren(['n','t']) && newData.child('n').isString() && newData.child('n').val().length <= 14"
+      }
+    },
+    "lb": {
+      ".read": true,
+      "$g": {
+        "$n": {
+          ".write": "!data.exists() || newData.child('p').val() > data.child('p').val()",
+          ".validate": "newData.hasChildren(['n','p','t']) && newData.child('p').isNumber() && newData.child('p').val() <= 100000 && newData.child('n').isString() && newData.child('n').val().length <= 14"
+        }
+      }
+    },
+    "forum": {
+      ".read": true,
+      "$id": {
+        ".write": "!data.exists()",
+        ".validate": "newData.hasChildren(['a','b','t','cat','d'])",
+        "t": { ".validate": "newData.isString() && newData.val().length <= 90" },
+        "b": { ".validate": "newData.isString() && newData.val().length <= 400" },
+        "a": { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "r": {
+          "$rid": {
+            ".write": "!data.exists()",
+            ".validate": "newData.hasChildren(['a','b','d']) && newData.child('b').isString() && newData.child('b').val().length <= 250 && newData.child('a').isString() && newData.child('a').val().length <= 20"
+          }
+        }
+      }
+    }
+  }
+}
