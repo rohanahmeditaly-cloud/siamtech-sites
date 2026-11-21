@@ -3,12 +3,22 @@ const $=(s,r=document)=>r.querySelector(s), app=$('#app');
 const LS=(k,d)=>{try{const v=JSON.parse(localStorage.getItem('sh_'+k));return v??d}catch{return d}};
 const SV=(k,v)=>{try{localStorage.setItem('sh_'+k,JSON.stringify(v))}catch{}};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const SC=(t)=>`<div class="scudo"><span class="av">${MASCOT}</span><div><b>SCUDO</b>${t}</div></div>`;
+const SC=(t)=>`<div class="scudo"><span class="av"><img src="logo-emblem.png" alt=""></span><div><b>SCUDO</b>${t}</div></div>`;
 
 /* ===== DATI: modifica qui contenuti, video (yt = ID YouTube oppure file "video/nome.mp4"), quiz ===== */
-const LOGO='<svg viewBox="0 0 120 110" width="64" height="58"><defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fde047"/><stop offset=".5" stop-color="#fb923c"/><stop offset="1" stop-color="#c2410c"/></linearGradient><linearGradient id="lt" x1="0" x2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs><path d="M60 52C48 40 30 36 6 38c6 14 20 26 40 28z" fill="url(#lg)"/><path d="M60 52C72 40 90 36 114 38c-6 14-20 26-40 28z" fill="url(#lg)"/><path d="M60 8 92 20v30c0 24-14 42-32 52C42 92 28 74 28 50V20z" fill="url(#lg)"/><path d="M60 16 85 25v25c0 19-10 33-25 42C45 83 35 69 35 50V25z" fill="#0b1020"/><path d="M60 26c-9 0-16 7-16 16v10h32V42c0-9-7-16-16-16z" fill="url(#lt)"/><rect x="48" y="40" width="24" height="6" rx="3" fill="#0b1020"/><path d="m50 68 7 7 14-15" stroke="#fb923c" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const MASCOT='<svg viewBox="0 0 100 100"><defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdba74"/><stop offset="1" stop-color="#ea580c"/></linearGradient></defs><path d="M50 6 88 20v28c0 24-16 40-38 48C28 88 12 72 12 48V20z" fill="url(#mg)"/><rect x="24" y="34" width="52" height="18" rx="9" fill="#0b1020"/><circle cx="40" cy="43" r="4" fill="#2dd4bf"/><circle cx="60" cy="43" r="4" fill="#2dd4bf"/><path d="m38 66 8 8 16-17" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const PAGES=[['home','🏠','HOME'],['impara','📖','IMPARA'],['quiz','📝','QUIZ'],['giochi','🎮','GIOCHI'],['forum','👥','FORUM'],['podcast','🎙️','PODCAST'],['scanner','✨','AI SCANNER'],['sos','🚨','EMERGENZA']];
+const BOT='<svg viewBox="0 0 64 64"><defs><linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><rect width="64" height="64" rx="18" fill="url(#bg1)"/><path d="M32 9 50 16v14c0 11-7 19-18 24C21 49 14 41 14 30V16z" fill="#0b1020"/><rect x="21" y="23" width="22" height="9" rx="4.5" fill="#2dd4bf"/><circle cx="28" cy="27.5" r="2" fill="#0b1020"/><circle cx="36" cy="27.5" r="2" fill="#0b1020"/><path d="M26 38c3 3 9 3 12 0" stroke="#fb923c" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M47 44h7a4 4 0 0 1 4 4v4l-4-2h-7z" fill="#fb923c"/></svg>';
+/* ===== DATABASE: Firebase Realtime DB via REST (config.js). Senza URL: salvataggio locale ===== */
+const DBU=(typeof SHIELDO_DB!=='undefined'?SHIELDO_DB:'').replace(/\/$/,''),ONLINE=!!DBU;
+const walk=(o,ps)=>ps.reduce((a,k)=>a==null?a:a[k],o);
+async function dget(p){if(ONLINE){const r=await fetch(`${DBU}/${p}.json`);if(!r.ok)throw 0;return await r.json()}return walk(LS('tree',{}),p.split('/'))??null}
+async function dput(p,v){if(ONLINE){const r=await fetch(`${DBU}/${p}.json`,{method:'PUT',body:JSON.stringify(v)});if(!r.ok)throw 0;return}
+ const t=LS('tree',{}),ps=p.split('/'),l=ps.pop();let o=t;ps.forEach(k=>o=o[k]=o[k]||{});o[l]=v;SV('tree',t)}
+const BAD=/(cazz|merd|stronz|fuck|shit|puttan|troi|negro|bastard|vaffa|figa|minchia)/i;
+const nkey=n=>n.toLowerCase().replace(/[.$#\[\]\/\s]/g,'_');
+const okNick=v=>v.length>=2&&v.length<=14&&/^[\w\- àèéìòù]+$/i.test(v)&&!BAD.test(v);
+async function saveNick(v){v=(v||'').trim().slice(0,14);if(!okNick(v)){alert('Nickname non valido: usa 2-14 lettere o numeri, senza parolacce.');return false}SV('nick',v);try{await dput('nicks/'+nkey(v),{n:v,t:Date.now()})}catch{}return true}
+const unsafe=v=>BAD.test(v)||/[\w.+-]+@[\w-]+\.\w+/.test(v)||/\d{8,}/.test(v.replace(/[\s-]/g,''))||/https?:\/\/|www\./i.test(v);
+const PAGES=[['home','🏠','HOME'],['impara','📖','IMPARA'],['quiz','📝','QUIZ'],['giochi','🎮','GIOCHI'],['forum','👥','FORUM'],['chat','🤖','CHIEDI A SHIELDO'],['scanner','✨','AI SCANNER'],['sos','🚨','EMERGENZA']];
 const TOPICS=[
 {id:'virus',cat:'Virus & Malware',title:'Virus, malware e attacchi informatici',desc:'Cosa sono i virus informatici, come arrivano sul tuo dispositivo e come bloccarli.',yt:'',q:'virus malware per ragazzi spiegazione',
  tips:['Installa app solo dagli store ufficiali (App Store o Play Store).','Aggiorna il telefono o il computer ogni volta che te lo chiede: chiude le porte ai virus.','Non aprire allegati o link di chi non conosci, nemmeno se sembrano divertenti.','Se il dispositivo diventa strano, spegni tutto e avvisa subito un adulto.'],
@@ -22,51 +32,46 @@ const TOPICS=[
 {id:'ia',cat:'Contenuti IA',title:'Immagini e video creati dall’IA',desc:'Deepfake e foto false: come capire cosa è reale e cosa no.',yt:'',q:'riconoscere immagini create con intelligenza artificiale',
  tips:['Controlla mani, denti, orecchie e testi nelle immagini: l’IA sbaglia spesso lì.','Se una notizia è incredibile, cercala su fonti affidabili prima di condividerla.','I video “troppo perfetti” o con voci strane possono essere deepfake.','Non condividere mai foto di altri senza permesso, nemmeno modificate.'],
  quiz:{t:'Reale o creato dall’IA?',qs:[['Dove l’IA sbaglia spesso?',['Mani e dita','Colori','Cielo','Nulla'],0],['Vedi una notizia incredibile. Cosa fai?',['Condivido subito','Verifico su fonti affidabili','Credo ai commenti','Metto like'],1],['Un deepfake è…',['Un video falso realistico fatto con IA','Un gioco','Un antivirus','Un filtro'],0],['Posso modificare con IA la foto di un compagno e postarla?',['Sì, è uno scherzo','No, serve il suo permesso e può far male','Sì se è divertente','Solo il lunedì'],1]]}}];
-const EPS=[['Ciao, futuro CyberEroe!','La presentazione: chi è Scudo e cosa faremo insieme in questo podcast.','Ciao, futuro CyberEroe! Io sono Scudo, il tuo scudo digitale. In questo podcast ti racconterò storie, trucchi e consigli per difenderti online. Pronto a diventare un vero cyber eroe? Iniziamo!'],
-['Virus e malware: i nemici invisibili','Come si nasconde un virus nel telefono e come tenerlo lontano.','I virus sono programmi cattivi che si nascondono in app false, allegati e link strani. Per tenerli lontani scarica app solo dagli store ufficiali, aggiorna sempre il telefono e non aprire nulla da sconosciuti. Se il telefono fa cose strane, spegnilo e avvisa un adulto.'],
-['Profili falsi: chi c’è dietro lo schermo?','Come riconoscere chi finge di essere un altro.','Online chiunque può fingere di essere un ragazzino come te. Diffida di chi chiede foto, indirizzo o segreti. Cerca la foto con la ricerca immagini, e se ti senti a disagio, blocca, segnala e parlane con un adulto di fiducia.'],
-['Truffe e phishing','Messaggi trappola che rubano password.','Un messaggio dice che il tuo account è bloccato e vuole la password? È phishing! Non cliccare. Apri l’app ufficiale da solo e controlla lì. Premi gratis e urgenza sono i segnali classici della truffa.'],
-['Reale o creato dall’IA?','Foto e video falsi: come non farti ingannare.','Oggi l’intelligenza artificiale crea immagini molto realistiche. Guarda mani, testi e sfondi: spesso ci sono errori. E prima di condividere una notizia, controlla sempre che sia vera.']];
-const FORUM0=[{id:1,cat:'Truffe & Phishing',d:'16 ottobre 2026',t:'Un link mi ha chiesto la password del gioco online',b:'Stavo giocando e un sito mi ha detto che il mio account era bloccato e mi ha chiesto la password per sbloccarlo. Non l’ho data e ho chiuso la pagina. Ho fatto bene?',a:'Luca13',r:['Hai fatto benissimo! Nessun gioco chiede la password così.','Controlla comunque l’account dall’app ufficiale.']},
-{id:2,cat:'Altro',d:'16 ottobre 2026',t:'Come faccio a capire se una foto è fatta con l’IA?',b:'Sul web ho visto foto fantastiche ma strane. C’è un modo per capirlo?',a:'Giulia12',r:['Guarda mani e testi, sono i punti dove sbaglia di più. Prova anche lo scanner di Shieldo!']}];
 const CATS=['Virus & Malware','Profili falsi','Truffe & Phishing','Password & Privacy','Altro'];
 
 /* ===== ROUTER ===== */
 $('#nav').innerHTML=PAGES.map(p=>`<a href="#${p[0]}" data-p="${p[0]}"><span class="nt">${p[1]}</span>${p[2]}</a>`).join('');
-$('.brand').innerHTML=LOGO+'<span>SHIELDO</span>';
-$('#burger').onclick=()=>$('#side').classList.toggle('open');
+$('.brand').innerHTML='<img src="logo-emblem.png" alt=""><span>SHIELDO</span>';
+const tg=v=>document.body.classList.toggle('nav-open',v);$('#burger').onclick=()=>tg();$('#bd').onclick=$('#sx').onclick=()=>tg(false);
 let stopFn=null;
 function route(){
- if(stopFn){stopFn();stopFn=null} speechSynthesis.cancel();
+ if(stopFn){stopFn();stopFn=null}
  const [p,arg]=(location.hash.slice(1)||'home').split('/');
- $('#side').classList.remove('open');
+ document.body.classList.remove('nav-open');
  document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===p||(p==='certificato'&&a.dataset.p==='quiz')));
- const R={home,impara,quiz,giochi,forum,podcast,scanner,certificato,sos};(R[p]||home)(arg);
+ const R={home,impara,quiz,giochi,forum,chat,scanner,certificato,sos};(R[p]||home)(arg);
  scrollTo(0,0);
 }
 addEventListener('hashchange',route);
 
 /* ===== HOME ===== */
-function home(){app.innerHTML=`<section class="hero"><div><span class="pill">👋 CIAO, FUTURO CYBEREROE!</span><h1>Costruisci il tuo <span class="hl">scudo</span> digitale</h1><p class="sub">Shieldo ti insegna a riconoscere virus, profili falsi, truffe e contenuti creati dall'intelligenza artificiale. Impara, gioca, fai il quiz e ricevi il tuo certificato.</p><a class="btn" href="#impara">INIZIA A IMPARARE →</a><a class="btn g" href="#scanner">✨ AI SCANNER</a><button class="btn" id="inst" style="display:none">⬇ SCARICA APP</button></div><div class="mascot">${MASCOT}</div></section>
+function home(){app.innerHTML=`<section class="hero"><div><span class="pill">👋 CIAO, FUTURO CYBEREROE!</span><h1>Costruisci il tuo <span class="hl">scudo</span> digitale</h1><p class="sub">Shieldo ti insegna a riconoscere virus, profili falsi, truffe e contenuti creati dall'intelligenza artificiale. Impara, gioca, fai il quiz e ricevi il tuo certificato.</p><a class="btn" href="#impara">INIZIA A IMPARARE →</a><a class="btn g" href="#scanner">✨ AI SCANNER</a><button class="btn" id="inst" style="display:none">⬇ SCARICA APP</button></div><div class="mascot"><img src="logo-full.png" alt="Shieldo"></div></section>
 <h2>Cosa trovi</h2><div class="grid">${PAGES.slice(1).map(p=>`<a class="card" href="#${p[0]}" style="text-decoration:none;color:inherit"><div class="ico">${p[1]}</div><h3>${p[2]}</h3></a>`).join('')}</div>`;
  const b=$('#inst'); b.style.display='inline-block';
  b.onclick=async()=>{if(window._dp){_dp.prompt();_dp=null}else alert('Per installare l’app: dal menu del browser scegli “Aggiungi a schermata Home” / “Installa app”.')}}
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();window._dp=e});
 
-/* ===== IMPARA (video: modifica videos.json su GitHub, oppure aggiungili dal sito) ===== */
-let VJ=[];fetch('videos.json').then(r=>r.json()).then(j=>{VJ=j;if(location.hash.startsWith('#impara'))route()}).catch(()=>{});
+/* ===== IMPARA: i video delle lezioni li metti TU in videos.json; gli utenti possono solo aggiungere i propri link ===== */
+let VJ=[];fetch('videos.json').then(r=>r.json()).then(j=>{VJ=Array.isArray(j)?j:[];if(location.hash.startsWith('#impara'))route()}).catch(()=>{});
 const ytid=u=>{const m=(u||'').match(/(?:youtu\.be\/|[?&]v=|embed\/|shorts\/)([\w-]{11})/);return m?m[1]:(/^[\w-]{11}$/.test(u||'')?u:null)};
-const allV=()=>[...TOPICS.map(t=>({...t,url:LS('vid_'+t.id,'')||(VJ.find(v=>v.topic===t.id)||{}).url||t.yt})),...VJ.filter(v=>!v.topic).map((v,i)=>({id:'x'+i,cat:v.cat||'Video',title:v.title,desc:v.desc||'',url:v.url,tips:v.tips||[],extra:1})),...LS('myv',[]).map((v,i)=>({id:'m'+i,cat:'I tuoi video',title:v.title,desc:'Aggiunto da te',url:v.url,tips:[],extra:1,mine:1}))];
-function player(u){if(!u)return'<div class="card"><p>Nessun video collegato: incolla un link qui sotto.</p></div>';const y=ytid(u);
+const yts=q=>'https://www.youtube.com/results?search_query='+encodeURIComponent(q);
+const allV=()=>[...TOPICS.map(t=>({...t,url:(VJ.find(v=>v.topic===t.id)||{}).url||t.yt})),...VJ.filter(v=>!v.topic&&v.url).map((v,i)=>({id:'x'+i,cat:v.cat||'Video',title:v.title||'Video',desc:v.desc||'',url:v.url,tips:v.tips||[],extra:1,q:v.title||'sicurezza online ragazzi'})),...LS('myv',[]).map((v,i)=>({id:'m'+i,cat:'I tuoi video',title:v.title,desc:'Aggiunto da te',url:v.url,tips:[],extra:1,mine:1,q:v.title+' sicurezza online'}))];
+function player(u){if(!u)return'<div class="card"><p>🎬 Il video di questa lezione arriverà presto. Intanto leggi i consigli di Shieldo o cercalo su YouTube.</p></div>';const y=ytid(u);
  return y?`<iframe class="vid" src="https://www.youtube-nocookie.com/embed/${y}" allow="encrypted-media;picture-in-picture;fullscreen" allowfullscreen></iframe>`:`<video class="vid" controls playsinline src="${esc(u)}"></video>`}
 function impara(id){
  const V=allV();
- if(!id){app.innerHTML=`<h1>IMPARA</h1><p class="sub">Scegli un video: guarda, leggi i consigli di Shieldo e poi metti alla prova ciò che hai imparato.</p>${SC('Ogni video ti dà un superpotere contro i pericoli del web.')}<div class="grid">${V.map(t=>{const y=ytid(t.url);return`<a class="card vc" href="#impara/${t.id}"><div class="thumb" ${y?`style="background-image:url(https://i.ytimg.com/vi/${y}/hqdefault.jpg)"`:''}><i>▶</i></div><span class="tag">${t.cat}</span><h3>${esc(t.title)}</h3><p>${esc(t.desc)}</p></a>`}).join('')}</div><h2>＋ Aggiungi un video</h2><div class="card"><p>Incolla il titolo e il link (YouTube oppure un file .mp4, anche da GitHub).</p><input id="at" placeholder="Titolo del video" maxlength="80"><input id="au" placeholder="https://..."><button class="btn" id="ab">AGGIUNGI VIDEO</button></div>`;
-  $('#ab').onclick=()=>{const t=$('#at').value.trim(),u=$('#au').value.trim();if(!t||!u)return alert('Scrivi titolo e link.');const l=LS('myv',[]);l.push({title:t,url:u});SV('myv',l);impara()};return}
+ if(!id){app.innerHTML=`<h1>IMPARA</h1><p class="sub">Scegli un video: guarda, leggi i consigli di Shieldo e poi metti alla prova ciò che hai imparato.</p>${SC('Ogni video ti dà un superpotere contro i pericoli del web.')}<div class="grid">${V.map(t=>{const y=ytid(t.url);return`<a class="card vc" href="#impara/${t.id}"><div class="thumb" ${y?`style="background-image:url(https://i.ytimg.com/vi/${y}/hqdefault.jpg)"`:''}><i>▶</i></div><span class="tag">${t.cat}</span><h3>${esc(t.title)}</h3><p>${esc(t.desc)}</p></a>`}).join('')}</div><h2>＋ Aggiungi un tuo video</h2><div class="card"><p>Incolla il titolo e il link di un video (YouTube o file .mp4). Lo vedrai solo tu, su questo dispositivo.</p><input id="at" placeholder="Titolo del video" maxlength="80"><input id="au" placeholder="https://..."><button class="btn" id="ab">AGGIUNGI VIDEO</button><button class="btn g" id="as">🔎 Cerca video su YouTube</button></div>`;
+  $('#ab').onclick=()=>{const t=$('#at').value.trim(),u=$('#au').value.trim();if(!t||!u)return alert('Scrivi titolo e link.');if(unsafe(t))return alert('Titolo non valido.');const l=LS('myv',[]);l.push({title:t,url:u});SV('myv',l);impara()};
+  $('#as').onclick=()=>window.open(yts(($('#at').value.trim()||'')+' sicurezza online per ragazzi'),'_blank','noopener');return}
  const t=V.find(x=>x.id===id)||V[0],url=t.url;
- app.innerHTML=`<a href="#impara" class="back">← Tutti i video</a><div class="two"><div><span class="tag">${t.cat}</span><h1 style="font-size:clamp(26px,4vw,40px)">${esc(t.title)}</h1><p class="sub">${esc(t.desc)}</p>${url?`<div class="vbox">${player(url)}<a class="vopen" target="_blank" rel="noopener" href="${esc(/^https?:|\//.test(url)||url.includes('.')?url:'https://youtu.be/'+url)}">▷ Apri il video in una nuova scheda</a></div><a class="btn g" href="${esc(url)}" download target="_blank" rel="noopener">⬇ Scarica il video</a>`:player('')}${t.extra&&!t.mine?'':`<div class="card" style="margin-top:14px"><b>🔗 Link video</b><p style="margin:4px 0">Incolla un link YouTube o un file .mp4.</p><input id="vu" placeholder="https://..." value="${esc(t.mine?t.url:LS('vid_'+t.id,''))}"><button class="btn" id="vs">COLLEGA VIDEO</button><button class="btn g" id="vr">${t.mine?'Elimina video':'Rimuovi'}</button></div>`}</div><div><div class="card"><span class="tag">I consigli di Shieldo</span><ul class="tips">${t.tips.map(x=>`<li><i class="ck">✓</i>${x}</li>`).join('')||'<li>Guarda il video e parlane con un adulto.</li>'}</ul></div>${t.extra?'':`<div class="card" style="margin-top:16px"><span class="tag">Metti alla prova</span><p>Quiz disponibile: ${t.quiz.t}</p><a class="btn" style="width:100%;text-align:center" href="#quiz/${t.id}">📝 FAI IL QUIZ</a></div>`}</div></div>`;
- if($('#vs')){$('#vs').onclick=()=>{const v=$('#vu').value.trim();if(!v)return;if(t.mine){const l=LS('myv',[]);l[+t.id.slice(1)].url=v;SV('myv',l)}else SV('vid_'+t.id,v);impara(id)};
-  $('#vr').onclick=()=>{if(t.mine){const l=LS('myv',[]);l.splice(+t.id.slice(1),1);SV('myv',l);location.hash='impara'}else{SV('vid_'+t.id,'');impara(id)}}}}
+ app.innerHTML=`<a href="#impara" class="back">← Tutti i video</a><div class="two"><div><span class="tag">${t.cat}</span><h1 style="font-size:clamp(26px,4vw,40px)">${esc(t.title)}</h1><p class="sub">${esc(t.desc)}</p>${url?`<div class="vbox">${player(url)}<a class="vopen" target="_blank" rel="noopener" href="${esc(/^https?:|\//.test(url)||url.includes('.')?url:'https://youtu.be/'+url)}">▷ Apri il video in una nuova scheda</a></div><a class="btn g" href="${esc(url)}" download target="_blank" rel="noopener">⬇ Scarica il video</a>`:player('')}<a class="btn g" target="_blank" rel="noopener" href="${yts(t.q||t.title)}">🔎 Cerca altri video su YouTube</a>${t.mine?`<div class="card" style="margin-top:14px"><b>🔗 Il tuo video</b><input id="vu" value="${esc(t.url)}"><button class="btn" id="vs">SALVA LINK</button><button class="btn g" id="vr">Elimina video</button></div>`:''}</div><div><div class="card"><span class="tag">I consigli di Shieldo</span><ul class="tips">${t.tips.map(x=>`<li><i class="ck">✓</i>${x}</li>`).join('')||'<li>Guarda il video e parlane con un adulto.</li>'}</ul></div>${t.extra?'':`<div class="card" style="margin-top:16px"><span class="tag">Metti alla prova</span><p>Quiz disponibile: ${t.quiz.t}</p><a class="btn" style="width:100%;text-align:center" href="#quiz/${t.id}">📝 FAI IL QUIZ</a></div>`}</div></div>`;
+ if(t.mine){$('#vs').onclick=()=>{const v=$('#vu').value.trim();if(!v)return;const l=LS('myv',[]);l[+t.id.slice(1)].url=v;SV('myv',l);impara(id)};
+  $('#vr').onclick=()=>{const l=LS('myv',[]);l.splice(+t.id.slice(1),1);SV('myv',l);location.hash='impara'}}}
 
 /* ===== QUIZ + CERTIFICATO (punteggio massimo 100) ===== */
 const PASS=70;
@@ -91,17 +96,17 @@ function certBlock(host,t,pc){
  host.innerHTML=`<h2>🏅 Il tuo certificato</h2><input id="nm" maxlength="30" placeholder="Scrivi il tuo nome" value="${esc(LS('name',''))}" style="max-width:420px"><canvas id="cv" width="1000" height="700" style="width:100%;max-width:760px;display:block"></canvas><button class="btn" id="dl">⬇ SCARICA IL CERTIFICATO</button>
  <div class="card" style="margin-top:20px"><span class="tag">Il tuo attestato</span><h3>Carica un PDF o un’immagine</h3><p>Carica il tuo attestato per tenerlo qui e rivederlo quando vuoi.</p><input type="file" id="up" accept="image/*,application/pdf"><div id="upv"></div></div>`;
  const cv=$('#cv'),x=cv.getContext('2d');
- const im=[LOGO,MASCOT].map(v=>{const i=new Image();i.onload=()=>draw();i.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(v.replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '));return i});
+ const li=new Image();li.onload=()=>draw();li.src=LOGO_DATA;
  const draw=()=>{const n=$('#nm').value.trim()||'Giovane Difensore';SV('name',$('#nm').value.trim());
   x.fillStyle='#000';x.fillRect(0,0,1000,700);x.strokeStyle='#fb923c';x.lineWidth=10;x.beginPath();x.roundRect(20,20,960,660,36);x.stroke();x.lineWidth=2;x.beginPath();x.roundRect(45,45,910,610,26);x.stroke();
-  if(im[0].naturalWidth)x.drawImage(im[0],440,55,120,110);
+  if(li.naturalWidth)x.drawImage(li,415,48,170,123);
   x.textAlign='center';x.fillStyle='#fb923c';x.font='900 34px sans-serif';x.fillText('SHIELDO',500,200);
   x.fillStyle='#9aa4cc';x.font='16px sans-serif';x.fillText('A T T E S T A T O   N O N   U F F I C I A L E',500,235);
   x.fillStyle='#fb923c';x.font='900 54px sans-serif';x.fillText('CERTIFICATO DI SCUDO',500,300);
   x.fillStyle='#fff';x.font='20px sans-serif';x.fillText('conferito a',500,345);x.font='bold 46px sans-serif';x.fillText(n,500,405);
   x.font='20px sans-serif';x.fillStyle='#cbd5ff';x.fillText('per aver superato il quiz “'+t.quiz.t+'”',500,450);x.fillText('e per aver costruito il proprio scudo contro le minacce del web.',500,480);
   x.strokeStyle='#fb923c';x.lineWidth=2;x.beginPath();x.roundRect(370,515,260,60,30);x.stroke();x.fillStyle='#fb923c';x.font='bold 26px sans-serif';x.fillText(pc+'/100 SUPERATO',500,555);
-  if(im[1].naturalWidth)x.drawImage(im[1],70,560,80,80);
+  if(li.naturalWidth)x.drawImage(li,70,570,86,62);
   x.textAlign='right';x.fillStyle='#9aa4cc';x.font='20px sans-serif';x.fillText(new Date().toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}),930,610);x.fillStyle='#fb923c';x.fillText('Shieldo',930,640)};
  draw();$('#nm').oninput=draw;
  $('#dl').onclick=()=>{const a=document.createElement('a');a.download='certificato-shieldo.png';a.href=cv.toDataURL('image/png');a.click()};
@@ -114,41 +119,112 @@ function sos(){
  const N=[['🚑','Ambulanza','118','Emergenze mediche'],['🚓','Polizia di Stato','113','Reati e pericoli'],['🛡️','Carabinieri','112','Pronto intervento'],['🚒','Vigili del fuoco','115','Incendi e soccorso'],['🆘','Numero unico emergenze','112','Valido in tutta Europa'],['💙','Telefono Azzurro','19696','Aiuto per ragazzi (gratuito)']];
  app.innerHTML=`<h1>🚨 CHIAMATA DI EMERGENZA</h1><p class="sub">Tocca il pulsante per chiamare con un click dal telefono.</p>${SC('Chiama solo in caso di vera emergenza. Mantieni la calma e, se puoi, chiedi aiuto a un adulto.')}<div class="grid">${N.map(n=>`<div class="card sosc"><div class="ico">${n[0]}</div><h3>${n[1]}</h3><p>${n[3]}</p><a class="btn sos" href="tel:${n[2]}">📞 CHIAMA ${n[2]}</a></div>`).join('')}</div><div class="card" style="margin-top:20px"><span class="tag">Cosa dire</span><ul class="tips"><li><i class="ck">1</i>Dì chi sei e che cosa è successo.</li><li><i class="ck">2</i>Dì dove ti trovi (indirizzo o punto di riferimento).</li><li><i class="ck">3</i>Non riattaccare finché l’operatore non te lo dice.</li></ul><small style="color:var(--mu)">Su computer il pulsante funziona solo se hai un’app di chiamata collegata. I numeri sono quelli italiani.</small></div>`}
 
-/* ===== PODCAST: per audio veri metti i link (mp3 da GitHub) in AUDIO, uno per episodio; se vuoto parla la voce del dispositivo ===== */
-const AUDIO=['','','','',''];
-function podcast(){
- app.innerHTML=`<section class="hero" style="grid-template-columns:1fr"><div><span class="pill">🎙️ PODCAST</span><h1>Le avventure di <span style="color:var(--or)">Scudo</span></h1><p class="sub">Episodi brevi da ascoltare con le cuffie: storie, trucchi e consigli per difenderti online mentre sei in cammino o prima di dormire.</p></div></section><h2>TUTTI GLI EPISODI</h2>${EPS.map((e,i)=>`<div class="card ep"><button class="play" data-i="${i}">▶</button><div><span class="tag">Episodio ${i+1}</span><h3 style="margin:2px 0">${e[0]}</h3><span style="color:var(--mu)">${e[1]}</span></div></div>`).join('')}`;
- let cur=-1,au=null;const bs=app.querySelectorAll('.play'),reset=()=>bs.forEach(b=>b.textContent='▶');
- const halt=()=>{speechSynthesis.cancel();if(au){au.pause();au=null}reset()};stopFn=halt;
- bs.forEach(b=>b.onclick=()=>{const i=+b.dataset.i;const same=cur===i;halt();if(same){cur=-1;return}
-  cur=i;b.textContent='⏸';const end=()=>{reset();cur=-1};
-  if(AUDIO[i]){au=new Audio(AUDIO[i]);au.onended=end;au.onerror=end;au.play().catch(end)}
-  else{if(!('speechSynthesis' in window)){end();return alert('Il tuo browser non supporta la voce.')}const u=new SpeechSynthesisUtterance(EPS[i][2]);u.lang='it-IT';u.rate=.95;u.onend=end;u.onerror=end;speechSynthesis.speak(u)}})}
+/* ===== CHIEDI A SHIELDO (chatbot) ===== */
+const nz=t=>t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9:\/\.\-\s]/g,' ').replace(/\s+/g,' ').trim();
+const hit=(t,k)=>k.length<=3?(' '+t+' ').includes(' '+k+' '):(' '+t+' ').includes(' '+k);
+const L=(...a)=>'<ul>'+a.map(x=>`<li>${x}</li>`).join('')+'</ul>';
+const KB=[
+{id:'ciao',k:['ciao','salve','hey','ehi','buongiorno','buonasera','hello','yo'],a:'Ciao! Sono <b>Shieldo</b> 🛡️, il tuo scudo digitale. Chiedimi di virus, password, truffe, profili falsi, IA, cyberbullismo… oppure incolla un link sospetto e lo controllo!'},
+{id:'chi',k:['chi sei','come ti chiami','cosa sai fare','cosa puoi fare','puoi aiutarmi','come mi puoi aiutare','sei un robot','sei umano','sei una persona','chi ti ha creato','chi ti ha fatto'],a:'Sono <b>Shieldo</b>, un assistente automatico (non una persona) creato da SIAM AHMED per aiutare i ragazzi a stare al sicuro online. So spiegare virus, password, truffe, profili falsi, IA e privacy, controllo i link sospetti e posso farti dei mini-quiz. Per cose gravi, parla sempre con un adulto di fiducia.'},
+{id:'grazie',k:['grazie','thanks','gentile','bravo','perfetto','ottimo'],a:'Di niente! 😊 Ricorda: nel dubbio, fermati e chiedi a un adulto. Vuoi un’altra domanda o un mini-quiz?'},
+{id:'bye',k:['arrivederci','addio','a dopo','buonanotte','ci vediamo'],a:'A presto, cyber eroe! 🛡️ Resta sempre vigile online.'},
+{id:'virus',k:['virus','malware','trojan','spyware','ransomware','infetto','infettato','hacker','hackerato'],a:'Un <b>virus</b> (o malware) è un programma cattivo che entra nel telefono o nel computer di nascosto: ruba dati, mostra pubblicità o blocca tutto. Arriva da app false, allegati e link strani.'+L('Scarica app solo dagli store ufficiali','Aggiorna sempre il dispositivo','Non aprire allegati di sconosciuti','Se fa cose strane, spegni e avvisa un adulto'),more:'Segnali di un virus: telefono lentissimo, batteria che si scarica subito, pubblicità che compaiono da sole, app che non hai installato tu.',go:['impara/virus','Guarda la lezione sui virus']},
+{id:'phishing',k:['phishing','truffa','truffe','truffato','raggiro','esca','link sospetto','messaggio sospetto','account bloccato','account sospeso','hai vinto','premio','regalo gratis'],a:'Il <b>phishing</b> è una truffa: un messaggio finto (mail, SMS, chat) ti spinge a cliccare e a dare password o dati. Segnali tipici:'+L('Urgenza (“ultime 2 ore!”)','Premi o cose gratis','Link strani o con errori','Richiesta di password o dati della carta'),more:'Cosa fare: non cliccare, non rispondere, apri tu l’app o il sito ufficiale e controlla lì. Se hai già cliccato, cambia password e dillo a un adulto.',go:['impara/truffe','Guarda la lezione sulle truffe']},
+{id:'password',k:['password','parola d ordine','codice di accesso','credenziali','pin'],a:'Una <b>password forte</b>:'+L('è lunga (almeno 12 caratteri)','mischia maiuscole, minuscole, numeri e simboli','non contiene nome, data di nascita o “1234”','è diversa per ogni account'),more:'Trucco: usa una frase segreta, es. “MiPiaceIlGelatoAlLimone!7”. Non dirla a nessuno (nemmeno agli amici) e non scriverla in chat. Prova il gioco <a href="#giochi/pw">Password Master</a>!'},
+{id:'2fa',k:['2fa','due passaggi','doppia verifica','autenticazione','verifica in due'],a:'La <b>verifica a due passaggi</b> aggiunge un secondo controllo (un codice sul telefono) oltre alla password. Anche se qualcuno scopre la password, non riesce ad entrare. Attivala sugli account importanti, con l’aiuto di un adulto.'},
+{id:'profili',k:['profilo falso','profili falsi','account falso','finto','fingere','fake','si finge','catfish','falso amico','sconosciuto','sconosciuti'],a:'Online chiunque può <b>fingere di essere un altro</b>. Segnali di un profilo falso:'+L('account nuovo, poche foto, foto “perfette”','ti scrive subito e insiste per diventare amico','chiede foto, indirizzo, scuola o segreti','non vuole mai fare una videochiamata'),more:'Cosa fare: non rispondere, blocca, segnala e parlane con un adulto. Puoi cercare la sua foto con la ricerca per immagini.',go:['impara/profili','Guarda la lezione sui profili falsi']},
+{id:'privacy',k:['privacy','dati personali','indirizzo','dove abito','numero di telefono','foto private','scuola','posizione','geolocalizzazione','condividere'],a:'Dati come <b>indirizzo, scuola, numero di telefono, password e foto private</b> non si danno a chi conosci solo online. Prima di postare una foto chiediti: “Va bene se la vede chiunque, per sempre?”. Controlla anche che non si veda dove abiti o dove sei in quel momento.'},
+{id:'ia',k:['ia','intelligenza artificiale','deepfake','chatgpt','generato','creato con l ia','foto falsa','video falso','immagine falsa'],a:'L’<b>intelligenza artificiale</b> può creare foto, video e voci molto realistici (<b>deepfake</b>). Come difenderti:'+L('guarda mani, denti, testi e sfondi: spesso ci sono errori','cerca la notizia su fonti affidabili','diffida di video “troppo incredibili”','non modificare e non condividere foto di altri senza permesso'),more:'Prova l’<a href="#scanner">AI Scanner</a> di Shieldo: dà un’indicazione, ma nessuno strumento è sicuro al 100%.',go:['impara/ia','Guarda la lezione sull’IA']},
+{id:'bullismo',k:['bullismo','cyberbullismo','bullo','bulli','mi prendono in giro','insulti','insultano','offendono','mi odiano','esclusa','escluso','minacciato','minacce','umiliato'],a:'Mi dispiace, non è colpa tua 💙 Nessuno ha il diritto di farti stare male. Cosa fare:'+L('<b>Non rispondere</b> e non vendicarti','<b>Fai screenshot</b> come prova','<b>Blocca</b> e segnala la persona sull’app','<b>Parlane subito con un adulto</b> di fiducia (genitori, insegnante)'),more:'Se vuoi parlare con qualcuno: <b>Telefono Azzurro 19696</b> (gratuito, per ragazzi). In pericolo immediato: <b>112</b>. <a href="#sos">Vai alla sezione Emergenza</a>.'},
+{id:'ricatto',k:['ricatto','ricattato','ricattano','foto nude','nudo','nudi','minaccia di pubblicare','pubblicare le mie foto','sextortion','mi chiede soldi'],a:'⚠️ <b>Fermati un attimo: non è colpa tua e si può risolvere.</b>'+L('<b>Non pagare</b> e non mandare altre foto o video','Non cancellare le chat: fai screenshot','Blocca la persona','<b>Dillo subito a un adulto</b> di fiducia e rivolgetevi alla Polizia Postale (commissariatodips.it) o al <b>112</b>')+'Telefono Azzurro: <b>19696</b>. <a href="#sos">Numeri di emergenza</a>',urgent:1},
+{id:'wifi',k:['wifi','wi-fi','rete pubblica','wifi pubblico','hotspot'],a:'Il <b>Wi-Fi pubblico</b> (bar, stazioni, centri commerciali) può essere spiato. Evita di inserire password o dati personali, non fare acquisti e, se puoi, usa i dati del telefono per le cose importanti.'},
+{id:'giochi',k:['robux','vbucks','v-bucks','fortnite','roblox','minecraft','gratis nel gioco','skin gratis','hack','cheat','generatore','acquisti','gioco online','videogioco','videogiochi'],a:'Attenzione ai siti che promettono <b>Robux, V-Bucks o skin gratis</b>, “hack” o generatori: sono quasi sempre truffe per rubare l’account. Compra solo dallo store ufficiale e non dare mai la password del gioco, nemmeno a un “amico” conosciuto in chat.'},
+{id:'social',k:['social','instagram','tiktok','whatsapp','snapchat','youtube','facebook','telegram','discord','follower','profilo privato','eta minima','età minima'],a:'Sui social: tieni il profilo <b>privato</b>, accetta solo persone che conosci davvero, non pubblicare dove sei in tempo reale e usa un nickname invece del nome vero. Molte app hanno un’età minima (spesso 13 anni): se non hai l’età, chiedi ai tuoi genitori.'},
+{id:'agg',k:['aggiornamento','aggiornamenti','aggiornare','antivirus','sicuro il telefono','proteggere il telefono','proteggere il computer'],a:'Per proteggere i tuoi dispositivi: <b>aggiorna</b> sistema e app, installa solo da store ufficiali, usa un blocco schermo con PIN e, sul computer, un antivirus affidabile. Gli aggiornamenti chiudono le “porte” che i virus usano.'},
+{id:'shieldo',k:['quiz','certificato','scanner','forum','giochi','classifica','come funziona','come si usa','a cosa serve','cos e shieldo','shieldo'],a:'Su <b>Shieldo</b> puoi:'+L('<a href="#impara">Impara</a>: video e consigli','<a href="#quiz">Quiz</a>: con almeno 70/100 ottieni il certificato','<a href="#giochi">Giochi</a>: sali nella TOP 10','<a href="#forum">Forum</a>: fai domande e aiuta gli altri','<a href="#scanner">AI Scanner</a>: controlla immagini e link','<a href="#sos">Emergenza</a>: numeri da chiamare con un tocco')},
+{id:'emergenza',k:['emergenza','pericolo','chiamare','polizia','ambulanza','carabinieri','vigili del fuoco','numero emergenza','soccorso','112','118','113','115'],a:'🚨 In una <b>vera emergenza</b> chiama: <b>112</b> (numero unico), <b>118</b> ambulanza, <b>113</b> Polizia, <b>115</b> Vigili del fuoco. Telefono Azzurro (per ragazzi): <b>19696</b>. Nella sezione <a href="#sos">Emergenza</a> puoi chiamare con un tocco.',urgent:1},
+{id:'battuta',k:['barzelletta','battuta','fammi ridere','scherzo','divertente'],a:()=>['Perché il computer è andato dal dottore? Aveva un virus! 🦠😄','Qual è la password preferita dei fantasmi? “Booooo123”… ma non usatela! 👻','Perché il telefono ha freddo? Ha lasciato le finestre (Windows) aperte! 🪟'][Math.random()*3|0]},
+{id:'aiuto',k:['aiuto','aiutami','help','sos'],a:'Sono qui con te 🛡️ Raccontami cosa è successo o scegli un argomento. Se sei in <b>pericolo</b> o ti senti male, chiama il <b>112</b> o parla subito con un adulto: <a href="#sos">Emergenza</a>.',chips:['Mi prendono in giro','Qualcuno mi ha truffato','Uno sconosciuto mi scrive']},
+{id:'tempo',k:['che ore sono','che giorno','meteo','tempo fa','calcio','partita','compiti','matematica','ricetta'],a:'Su questo non sono bravo 😅: io mi occupo di <b>sicurezza online</b>. Chiedimi di virus, password, truffe, profili falsi o IA!'}];
+const DANGER=['suicid','uccidermi','togliermi la vita','farmi del male','voglio morire','non voglio vivere','autolesion','ammazzarmi'];
+const CH={q:null,last:null};
+const SUG=['Cos’è il phishing?','Come creo una password sicura?','Come riconosco un profilo falso?','Mettimi alla prova','Controlla un link'];
+const URLRE=/(https?:\/\/\S+|www\.\S+|\b[\w-]+\.(?:com|it|net|org|xyz|top|click|app|io|ru|tk|ml|gq|cf|ga|icu|buzz)\b\S*)/i;
+function nextQ(){const t=TOPICS[Math.random()*TOPICS.length|0],q=t.quiz.qs[Math.random()*t.quiz.qs.length|0];CH.q={q:q[0],o:q[1],c:q[2],t:t.id};return{h:'📝 <b>Domanda:</b> '+esc(q[0]),chips:q[1]}}
+function answer(raw){
+ const t=nz(raw);
+ if(DANGER.some(d=>t.includes(d)))return{h:'Mi dispiace tanto che tu stia male 💙 <b>Non sei solo</b> e meriti aiuto. Parla <b>subito</b> con un adulto di cui ti fidi (genitore, parente, insegnante). Puoi chiamare il <b>Telefono Azzurro 19696</b> (gratuito) oppure il <b>112</b> se sei in pericolo. <a href="#sos">Apri la sezione Emergenza</a>.'};
+ if(CH.q){const q=CH.q,i=q.o.findIndex(x=>nz(x)===t||(t.length>8&&nz(x).includes(t)));
+  if(/^(basta|stop|esci|no)$/.test(t)){CH.q=null;return{h:'Ok, quiz finito! Bravo per l’impegno 🛡️',chips:SUG}}
+  if(i>=0){CH.q=null;const ok=i===q.c;return{h:(ok?'✅ <b>Esatto!</b>':'❌ <b>Non proprio.</b> La risposta giusta è: <b>'+esc(q.o[q.c])+'</b>.')+' Vuoi un’altra domanda?',chips:['Altra domanda','Basta così']}}}
+ if(/(altra domanda|ancora una|un altra|mettimi alla prova|quiz|interrogami|fammi una domanda|test)/.test(t)&&!/certificato/.test(t)){CH.last='quiz';return nextQ()}
+ if(/basta cosi/.test(t))return{h:'Ok! Torna quando vuoi, cyber eroe 🛡️',chips:SUG};
+ const m=raw.match(URLRE);
+ if(m){const r=analyzeLink(m[0]);if(r)return{h:`<b>${r.v}</b>${L(...r.w)}<b>Cosa fare:</b> ${r.adv}<br><small>Analisi indicativa: nel dubbio chiedi a un adulto. Puoi provare anche l’<a href="#scanner">AI Scanner</a>.</small>`}}
+ if(/(controlla|verifica|analizza).*(link|sito|url)|(link|sito).*(controlla|verifica|sicuro)/.test(t))return{h:'Certo! Incolla qui il link e lo controllo 🔎'};
+ if(/^(dimmi di piu|continua|ancora|spiegami meglio|e poi|perche|come mai|esempio|approfondisci|altro)$/.test(t)||(t.split(' ').length<=3&&/(piu|ancora|perche|meglio)/.test(t))){const k=KB.find(x=>x.id===CH.last);if(k&&k.more)return{h:k.more,go:k.go};return{h:'Chiedimi pure un argomento preciso: virus, password, truffe, profili falsi, IA o privacy 🙂',chips:SUG}}
+ let best=null,sc=0;KB.forEach(k=>{let x=0;k.k.forEach(w=>{if(hit(t,nz(w))){const z=nz(w);x+=z.split(' ').length*2+(z.length>5?1:0)}});if(k.id==='ciao'&&t.split(' ').length>3)x=0;if(x>sc){sc=x;best=k}});
+ if(best){CH.last=best.id;return{h:typeof best.a==='function'?best.a():best.a,go:best.go,chips:best.more?['Dimmi di più']:null}}
+ return{h:['Non ho capito bene 🤔 Prova a chiedermelo con altre parole, oppure scegli un argomento.','Hmm, su questo non so rispondere. Posso aiutarti con sicurezza online: scegli un argomento!'][Math.random()*2|0],chips:SUG}}
+function chat(){
+ const H=LS('chat',[]),first=!H.length;
+ app.innerHTML=`<div class="chatw"><div class="chath"><div class="botav">${BOT}</div><div><h1 class="ct">CHIEDI A SHIELDO</h1><small><i class="dot"></i> Online · il tuo assistente per la sicurezza online</small></div><button class="chip" id="cc">🗑 Nuova chat</button></div><div id="cm" class="cm" aria-live="polite"></div><div id="cs" class="chips"></div><div class="cin"><input id="ci" placeholder="Scrivi una domanda a Shieldo…" maxlength="300" autocomplete="off"><button class="btn" id="cb">Invia ➤</button></div><small class="disc">Sono un assistente automatico: per cose serie parla sempre con un adulto di fiducia.</small></div>`;
+ const cm=$('#cm'),cs=$('#cs');
+ const add=(r,h,sv=true)=>{const d=document.createElement('div');d.className='msg '+r;d.innerHTML=(r==='b'?`<div class="botav">${BOT}</div>`:'')+`<div class="bub">${h}</div>`;cm.appendChild(d);cm.scrollTop=cm.scrollHeight;if(sv){H.push({r,h});SV('chat',H.slice(-40))}};
+ const chips=l=>{cs.innerHTML='';(l||[]).forEach(c=>{const b=document.createElement('button');b.className='chip';b.textContent=c;b.onclick=()=>send(c);cs.appendChild(b)})};
+ let busy=false;
+ const send=txt=>{txt=(txt??$('#ci').value).trim();if(!txt||busy)return;$('#ci').value='';chips();add('u',esc(txt));busy=true;
+  const ty=document.createElement('div');ty.className='msg b';ty.innerHTML=`<div class="botav">${BOT}</div><div class="bub typing"><span></span><span></span><span></span></div>`;cm.appendChild(ty);cm.scrollTop=cm.scrollHeight;
+  let r;try{r=answer(txt)}catch{r={h:'Ops, qualcosa non ha funzionato. Riprova! 🙈',chips:SUG}}
+  setTimeout(()=>{ty.remove();add('b',r.h+(r.go?`<br><a class="btn" style="margin-top:8px" href="#${r.go[0]}">▶ ${r.go[1]}</a>`:''));chips(r.chips);busy=false;$('#ci').focus()},450+Math.min(r.h.length,300)*3)};
+ H.forEach(m=>add(m.r,m.h,false));
+ if(first){add('b','Ciao! Sono <b>Shieldo</b> 🛡️. Chiedimi quello che vuoi sulla sicurezza online, oppure incolla un link sospetto e lo controllo.');}
+ chips(SUG);
+ $('#cb').onclick=()=>send();$('#ci').onkeydown=e=>{if(e.key==='Enter')send()};
+ $('#cc').onclick=()=>{SV('chat',[]);CH.q=null;CH.last=null;chat()}}
 
-/* ===== FORUM ===== */
-function forum(){
- let posts=LS('forum',FORUM0),f='Tutti';
- const draw=()=>{app.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h1>FORUM</h1><button class="btn" id="nw">＋ NUOVA DOMANDA</button></div><p class="sub">Fai una domanda, racconta un dubbio o aiuta un altro ragazzo: insieme si impara meglio.</p>${SC('In questo forum nessuno è solo: chiedi aiuto senza vergogna e rispondi con gentilezza a chi ne ha bisogno.')}<div id="frm" class="card hide"><input id="ft" maxlength="90" placeholder="Titolo"><textarea id="fb" rows="3" maxlength="400" placeholder="Racconta..."></textarea><select id="fc">${CATS.map(c=>`<option>${c}</option>`).join('')}</select><input id="fa" maxlength="20" placeholder="Il tuo nickname (non il nome vero!)"><button class="btn" id="fs">PUBBLICA</button></div><div class="tabs">${['Tutti',...CATS].map(c=>`<button class="chip ${c===f?'on':''}" data-c="${c}">${c.toUpperCase()}</button>`).join('')}</div>${posts.filter(p=>f==='Tutti'||p.cat===f).map(p=>`<div class="card" style="margin-bottom:14px"><span class="tag">${p.cat}</span> <small style="color:var(--mu)">${p.d}</small><h3>${esc(p.t)}</h3><p>${esc(p.b)}</p><small style="color:var(--mu)">di ${esc(p.a)} · ${p.r.length} risposte</small>${p.r.map(r=>`<div class="rep">${esc(r)}</div>`).join('')}<form data-id="${p.id}" style="display:flex;gap:8px"><input placeholder="Rispondi con gentilezza..." maxlength="250"><button class="btn">Invia</button></form></div>`).join('')||'<p class="sub">Nessuna domanda qui: scrivi la prima!</p>'}`;
-  $('#nw').onclick=()=>$('#frm').classList.toggle('hide');
+/* ===== FORUM (condiviso online se config.js ha l'URL del database) ===== */
+async function forum(){
+ let f='Tutti',posts=[],err=false,open=false;
+ const fmt=d=>new Date(d).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'});
+ const load=async()=>{try{const o=(await dget('forum'))||{};posts=Object.values(o).filter(p=>p&&p.t).map(p=>({...p,r:Object.values(p.r||{}).sort((a,b)=>a.d-b.d)})).sort((a,b)=>b.d-a.d).slice(0,60);err=false}catch{err=true}};
+ const rid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+ const cool=()=>Date.now()-LS('lastpost',0)<15000;
+ const nick=async()=>{let n=LS('nick','');if(!n||!okNick(n)){const v=prompt('Scrivi il tuo nickname (2-14 caratteri, non il nome vero!)');if(v===null||!(await saveNick(v)))return null;n=LS('nick','')}return n};
+ const draw=()=>{app.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start"><h1>FORUM</h1><div><button class="btn g" id="rf">↻ Aggiorna</button><button class="btn" id="nw">＋ NUOVA DOMANDA</button></div></div><p class="sub">Fai una domanda, racconta un dubbio o aiuta un altro ragazzo: insieme si impara meglio.</p>${SC('In questo forum nessuno è solo: chiedi aiuto senza vergogna e rispondi con gentilezza. Non scrivere mai nome vero, indirizzo, telefono o link.')}${ONLINE?'':'<p class="sub" style="color:#facc15">⚠️ Database non configurato: le domande si vedono solo su questo dispositivo.</p>'}<div id="frm" class="card ${open?'':'hide'}"><input id="ft" maxlength="90" placeholder="Titolo della domanda"><textarea id="fb" rows="3" maxlength="400" placeholder="Racconta..."></textarea><select id="fc">${CATS.map(c=>`<option>${c}</option>`).join('')}</select><button class="btn" id="fs">PUBBLICA</button></div><div class="tabs">${['Tutti',...CATS].map(c=>`<button class="chip ${c===f?'on':''}" data-c="${c}">${c.toUpperCase()}</button>`).join('')}</div>${err?'<div class="card"><p>⚠️ Non riesco a caricare il forum. Controlla la connessione e premi “Aggiorna”.</p></div>':''}${posts.filter(p=>f==='Tutti'||p.cat===f).map(p=>`<div class="card" style="margin-bottom:14px"><span class="tag">${esc(p.cat)}</span> <small style="color:var(--mu)">${fmt(p.d)}</small><h3>${esc(p.t)}</h3><p style="color:var(--tx)">${esc(p.b)}</p><small style="color:var(--mu)">di <b>${esc(p.a)}</b> · ${p.r.length} risposte</small>${p.r.map(r=>`<div class="rep"><b>${esc(r.a)}</b>: ${esc(r.b)}</div>`).join('')}<form data-id="${esc(p.id)}" style="display:flex;gap:8px;margin-top:8px"><input placeholder="Rispondi con gentilezza..." maxlength="250"><button class="btn" style="margin:0">Invia</button></form></div>`).join('')||(err?'':'<p class="sub">Nessuna domanda qui: scrivi la prima! 🙂</p>')}`;
+  $('#nw').onclick=()=>{open=!open;$('#frm').classList.toggle('hide',!open)};
+  $('#rf').onclick=async()=>{$('#rf').textContent='…';await load();draw()};
   app.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{f=b.dataset.c;draw()});
-  $('#fs').onclick=()=>{const t=$('#ft').value.trim(),b=$('#fb').value.trim();if(!t||!b)return alert('Scrivi titolo e testo.');
-   posts.unshift({id:Date.now(),cat:$('#fc').value,d:new Date().toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}),t,b,a:$('#fa').value.trim()||'Anonimo',r:[]});SV('forum',posts);draw()};
-  app.querySelectorAll('form[data-id]').forEach(fm=>fm.onsubmit=e=>{e.preventDefault();const v=fm.querySelector('input').value.trim();if(!v)return;posts.find(p=>p.id==fm.dataset.id).r.push(v);SV('forum',posts);draw()})};
- draw()}
+  $('#fs').onclick=async()=>{const t=$('#ft').value.trim(),b=$('#fb').value.trim();if(!t||!b)return alert('Scrivi titolo e testo.');if(unsafe(t)||unsafe(b))return alert('Non scrivere parolacce, link, email o numeri di telefono.');if(cool())return alert('Aspetta qualche secondo prima di scrivere di nuovo.');
+   const a=await nick();if(!a)return;const id=rid();$('#fs').disabled=true;
+   try{await dput('forum/'+id,{id,cat:$('#fc').value,t,b,a,d:Date.now()});SV('lastpost',Date.now());open=false;await load();draw()}catch{alert('Non sono riuscito a pubblicare. Riprova.');$('#fs').disabled=false}};
+  app.querySelectorAll('form[data-id]').forEach(fm=>fm.onsubmit=async e=>{e.preventDefault();const b=fm.querySelector('input').value.trim();if(!b)return;if(unsafe(b))return alert('Non scrivere parolacce, link, email o numeri di telefono.');if(cool())return alert('Aspetta qualche secondo prima di scrivere di nuovo.');
+   const a=await nick();if(!a)return;try{await dput(`forum/${fm.dataset.id}/r/${rid()}`,{a,b,d:Date.now()});SV('lastpost',Date.now());await load();draw()}catch{alert('Non sono riuscito a inviare. Riprova.')}})};
+ app.innerHTML='<h1>FORUM</h1><p class="sub">⏳ Carico le domande…</p>';await load();if(location.hash.slice(1)==='forum')draw()}
 
 /* ===== GIOCHI + CLASSIFICHE TOP 10 (salvate nel browser) ===== */
 const GAMES=[['mem','🧩','MEMORY DELLA SICUREZZA','Trova le coppie di simboli e scopri il significato di ogni icona della sicurezza.'],['esc','🔐','ESCAPE ROOM DELLE TRUFFE','Quattro stanze, quattro trappole online: scegli bene e scappa fuori.'],['run','🏃','SCUDO RUNNER','Corri con la mascotte e schiva truffe, virus e link pericolosi.'],['vf','⚡','VERO O FALSO LAMPO','60 secondi: vero o falso? Più ne indovini, più punti fai.'],['pw','🔑','PASSWORD MASTER','Costruisci la password più forte rispettando tutte le regole.']];
-const lb=g=>LS('lb_'+g,[]),rec=g=>(lb(g)[0]||{}).p||0;
-const lbHtml=g=>{const l=lb(g);return`<div class="card"><span class="tag">🏆 Classifica TOP 10</span>${l.length?`<ol class="lb">${l.map(e=>`<li><b>${esc(e.n)}</b><span>${e.p}</span></li>`).join('')}</ol>`:'<p>Nessun record: sii il primo!</p>'}<small style="color:var(--mu)">Il record resta salvato finché qualcuno non lo supera.</small></div>`};
-function endGame(g,p){let n=LS('nick','');if(!n){n=(prompt('Scrivi il tuo nickname (non il nome vero!)')||'').trim().slice(0,14)||'Anonimo';SV('nick',n)}
- if(p>0){const l=lb(g),o=l.find(e=>e.n===n);if(o){if(p>o.p)o.p=p}else l.push({n,p});l.sort((a,b)=>b.p-a.p);l.splice(10);SV('lb_'+g,l)}
- const h=$('#lb');if(h)h.innerHTML=lbHtml(g)}
+const medals=['🥇','🥈','🥉'];
+async function lbGet(g){const o=(await dget('lb/'+g))||{};return Object.values(o).filter(e=>e&&typeof e.p==='number').sort((a,b)=>b.p-a.p||a.t-b.t).slice(0,10)}
+async function lbPut(g,n,p){const k=`lb/${g}/${nkey(n)}`;let c=null;try{c=await dget(k)}catch{}if(!c||p>c.p)await dput(k,{n,p,t:Date.now()})}
+async function renderLb(g,me){const h=$('#lb');if(!h)return null;h.innerHTML='<div class="card"><p>⏳ Carico la classifica…</p></div>';let l;
+ try{l=await lbGet(g)}catch{if($('#lb'))$('#lb').innerHTML='<div class="card"><p>⚠️ Classifica non raggiungibile. Controlla la connessione e riprova.</p></div>';return null}
+ if(!$('#lb'))return l;const pod=l.slice(0,3);
+ $('#lb').innerHTML=`<div class="card"><span class="tag">🏆 Classifica TOP 10</span>${l.length?`<div class="podium">${[1,0,2].filter(i=>pod[i]).map(i=>`<div class="p${i+1}">${i==0?'<span class="crown">👑</span>':''}<b>${medals[i]}</b>${esc(pod[i].n)}<span>${pod[i].p}</span></div>`).join('')}</div><ol class="lb">${l.map((e,i)=>`<li class="r${i+1} ${me&&e.n===me?'me':''}"><em>${i<3?medals[i]:i+1}</em><b>${esc(e.n)}</b><span>${e.p}</span></li>`).join('')}</ol>`:'<p>Nessun record: sii il primo! 👑</p>'}<small style="color:var(--mu)">${ONLINE?'Classifica condivisa: la vedono tutti. ':'⚠️ Modalità locale (database non configurato). '}Il record resta finché qualcuno non lo supera.</small></div>`;return l}
+function confetti(n=80){const c=['#facc15','#fb923c','#2dd4bf','#f43f7a','#a855f7','#38bdf8'];for(let i=0;i<n;i++){const d=document.createElement('i');d.className='cf';d.style.cssText=`left:${Math.random()*100}vw;background:${c[i%6]};animation-duration:${2+Math.random()*2.5}s;animation-delay:${Math.random()*.6}s;border-radius:${i%2?'50%':'2px'}`;document.body.appendChild(d);setTimeout(()=>d.remove(),5000)}}
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3800)}
+async function endGame(g,p){let n=LS('nick','');while(!n){const v=prompt('Scrivi il tuo nickname (2-14 caratteri, non il nome vero!)');if(v===null)break;if(await saveNick(v))n=LS('nick','')}
+ if(!n||p<=0){renderLb(g);return}
+ try{await lbPut(g,n,p)}catch{toast('⚠️ Punteggio non salvato online')}
+ const l=await renderLb(g,n);if(!l)return;
+ if(l[0]&&l[0].n===n&&l[0].p===p){confetti(140);toast('👑 NUOVO RECORD, '+n+'!')}else if(l.slice(0,3).some(e=>e.n===n&&e.p===p)){confetti(40);toast('🏅 Sei nella TOP 3!')}}
 function giochi(g){
- if(!g){app.innerHTML=`<h1>GIOCHI</h1><p class="sub">Allenati divertendoti: ogni gioco ti insegna a riconoscere un pericolo del web.</p>${SC('Scegli il tuo gioco preferito! Io tifo per te: qui si impara giocando.')}<div class="card" style="margin-bottom:18px"><b>👤 Il tuo nickname</b> <small style="color:var(--mu)">(usalo per le classifiche, non il nome vero)</small><div style="display:flex;gap:8px"><input id="nk" maxlength="14" placeholder="Nickname" value="${esc(LS('nick',''))}"><button class="btn" id="nb">SALVA</button></div></div><div class="grid">${GAMES.map(x=>`<div class="card gc"><div style="display:flex;justify-content:space-between"><span class="ico">${x[1]}</span><span class="tag">🏆 ${rec(x[0])} punti</span></div><h3>${x[2]}</h3><p>${x[3]}</p><a class="btn" style="width:100%;text-align:center" href="#giochi/${x[0]}">GIOCA →</a></div>`).join('')}</div>`;
-  $('#nb').onclick=()=>{const v=$('#nk').value.trim().slice(0,14);if(v){SV('nick',v);$('#nb').textContent='SALVATO ✓'}};return}
+ if(!g){app.innerHTML=`<h1>GIOCHI</h1><p class="sub">Allenati divertendoti: ogni gioco ti insegna a riconoscere un pericolo del web.</p>${SC('Scegli il tuo gioco preferito! Io tifo per te: qui si impara giocando.')}<div class="card" style="margin-bottom:18px"><b>👤 Il tuo nickname</b> <small style="color:var(--mu)">(usalo per le classifiche, non il nome vero)</small><div style="display:flex;gap:8px"><input id="nk" maxlength="14" placeholder="Nickname" value="${esc(LS('nick',''))}"><button class="btn" id="nb">SALVA</button></div></div><div class="grid">${GAMES.map(x=>`<div class="card gc"><div style="display:flex;justify-content:space-between"><span class="ico">${x[1]}</span><span class="tag">🏆 <span id="rc_${x[0]}">…</span></span></div><h3>${x[2]}</h3><p>${x[3]}</p><a class="btn" style="width:100%;text-align:center" href="#giochi/${x[0]}">GIOCA →</a></div>`).join('')}</div>`;
+  GAMES.forEach(async x=>{let t='nessun record';try{const l=await lbGet(x[0]);if(l[0])t=l[0].p+' · '+l[0].n}catch{t='—'}const e=$('#rc_'+x[0]);if(e)e.textContent=t});
+  $('#nb').onclick=async()=>{if(await saveNick($('#nk').value))$('#nb').textContent='SALVATO ✓'};return}
  const G=GAMES.find(x=>x[0]===g)||GAMES[0];
- app.innerHTML=`<a href="#giochi" class="back">← Tutti i giochi</a><h1>${G[2]}</h1><p class="sub">${G[3]} Giochi come: <b>${esc(LS('nick','(chiederò il nickname a fine partita)'))}</b></p><div class="two"><div id="gm"></div><div id="lb">${lbHtml(g)}</div></div>`;
- const gm=$('#gm');
+ app.innerHTML=`<a href="#giochi" class="back">← Tutti i giochi</a><h1>${G[2]}</h1><p class="sub">${G[3]} Giochi come: <b>${esc(LS('nick','(chiederò il nickname a fine partita)'))}</b></p><div class="two"><div id="gm"></div><div id="lb"></div></div>`;
+ const gm=$('#gm');renderLb(g,LS('nick',''));
  if(g==='mem'){const P=[['🔒','Lucchetto: i tuoi dati sono protetti'],['🔑','Password: tienila segreta'],['🛡️','Scudo: antivirus attivo'],['📶','Wi-Fi pubblico: attenzione ai dati'],['⚠️','Allarme: possibile truffa'],['🎣','Phishing: esca per rubare password'],['🦠','Virus: programma dannoso'],['🤖','IA: contenuto generato']];
   const d=[...P,...P].sort(()=>Math.random()-.5);let a=null,lock=false,m=0,fo=0;
   gm.innerHTML=`<p id="inf" class="sub">Trova le coppie!</p><div class="memg">${d.map((c,i)=>`<button class="mc" data-i="${i}">❓</button>`).join('')}</div>`;
@@ -169,7 +245,7 @@ function giochi(g){
   gm.innerHTML=`<div class="card"><p>Inventa una password nuova: <b>non usare la tua vera password!</b> Non viene inviata a nessuno.</p><input id="pi" placeholder="Scrivi qui..." maxlength="40" autocomplete="off"><div class="bar"><i id="pb" style="width:0"></i></div><ul id="pr" class="tips"></ul><button class="btn" id="ps">SALVA PUNTEGGIO</button></div>`;
   const calc=()=>{const v=$('#pi').value,r=RU.map(x=>!!x[1](v)),n=r.filter(Boolean).length;$('#pr').innerHTML=RU.map((x,k)=>`<li style="color:${r[k]?'#22c55e':'var(--mu)'}">${r[k]?'✅':'⬜'} ${x[0]}</li>`).join('');$('#pb').style.width=n/RU.length*100+'%';return n*100+Math.min(v.length,24)*10};
   calc();$('#pi').oninput=calc;$('#ps').onclick=()=>{const p=calc();endGame('pw',p);$('#ps').textContent='Salvato: '+p+' punti ✓'}}
- if(g==='run'){gm.innerHTML=`<p class="sub">Punti: <b id="pt">0</b> · 🏆 record <b>${rec('run')}</b> — frecce, A/D, pulsanti o tocca il lato sinistro/destro.</p><canvas id="c" width="420" height="600" style="width:100%;max-width:420px;background:#000;touch-action:none;display:block"></canvas><div style="display:flex;gap:10px;max-width:420px;margin-top:10px"><button class="btn g" id="bl" style="flex:1">◀ Sinistra</button><button class="btn g" id="br" style="flex:1">Destra ▶</button></div><button class="btn" id="rs">RICOMINCIA</button>`;
+ if(g==='run'){gm.innerHTML=`<p class="sub">Punti: <b id="pt">0</b> — frecce, A/D, pulsanti o tocca il lato sinistro/destro.</p><canvas id="c" width="420" height="600" style="width:100%;max-width:420px;background:#000;touch-action:none;display:block"></canvas><div style="display:flex;gap:10px;max-width:420px;margin-top:10px"><button class="btn g" id="bl" style="flex:1">◀ Sinistra</button><button class="btn g" id="br" style="flex:1">Destra ▶</button></div><button class="btn" id="rs">RICOMINCIA</button>`;
   const c=$('#c'),x=c.getContext('2d'),L=[0,140,280],N=['TRUFFA','VIRUS','FALSO LINK','PHISHING','FAKE'];let ln,ob,fr,sp,over,raf;
   const rr=(a,b,w,h,f,st,txt,col)=>{x.beginPath();x.roundRect(a,b,w,h,16);x.fillStyle=f;x.fill();x.lineWidth=3;x.strokeStyle=st;x.stroke();x.fillStyle=col;x.font='bold 14px sans-serif';x.textAlign='center';x.fillText(txt,a+w/2,b+h/2+5)};
   const init=()=>{cancelAnimationFrame(raf);ln=1;ob=[];fr=0;sp=4;over=false;loop()};
@@ -210,8 +286,11 @@ function scanner(){
     s=Math.min(100,s);const v=s>=60?'⚠️ PROBABILMENTE CREATO DALL’IA':s>=30?'🤔 POTREBBE ESSERE IA, CONTROLLA':'✅ SEMBRA UN CONTENUTO REALE';
     show({s,v,w,n:file.name,adv:'Fai una ricerca per immagine, cerca errori in mani e testi e verifica la fonte prima di condividerla.'})};
    im.complete?f():im.onload=f;return null})()};
- const scanLink=()=>{let raw=$('#li').value.trim();if(!raw){alert('Incolla un link.');return}
-  let u;try{u=new URL(/^https?:/i.test(raw)?raw:'https://'+raw)}catch{alert('Link non valido.');return}
+ const scanLink=()=>{const raw=$('#li').value.trim();if(!raw){alert('Incolla un link.');return}const r=analyzeLink(raw);if(!r)alert('Link non valido.');return r};
+ draw()}
+
+function analyzeLink(raw){
+  let u;try{u=new URL(/^https?:/i.test(raw)?raw:'https://'+raw)}catch{return null}
   let s=0,w=[];const h=u.hostname.toLowerCase(),full=u.href.toLowerCase();
   if(u.protocol!=='https:'){s+=25;w.push('Il sito non usa HTTPS (connessione non sicura).')}
   if(/^\d+\.\d+\.\d+\.\d+$/.test(h)){s+=40;w.push('Usa un indirizzo numerico invece di un nome.')}
@@ -228,7 +307,6 @@ function scanner(){
   s=Math.min(100,s);if(!w.length)w.push('Nessun segnale di pericolo evidente nell’indirizzo.');
   const ai=/(midjourney|openai|runwayml|pika|heygen|d-id|elevenlabs|synthesia)/.test(h);
   const v=ai?'🤖 STRUMENTO IA':s>=60?'⚠️ PROBABILE TRUFFA':s>=30?'🤔 SOSPETTO, STAI ATTENTO':'✅ SEMBRA UN CONTENUTO REALE';
-  return{s:ai?Math.max(s,60):s,v,w,n:raw,adv:'Non inserire password o dati. Apri il sito scrivendo tu l’indirizzo ufficiale e, se sei già entrato, cambia password e avvisa un adulto.'}};
- draw()}
+  return{s:ai?Math.max(s,60):s,v,w,n:raw,adv:'Non inserire password o dati. Apri il sito scrivendo tu l’indirizzo ufficiale e, se sei già entrato, cambia password e avvisa un adulto.'}}
 
 route();
