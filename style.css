@@ -95,7 +95,8 @@ h2{font-family:'Space Grotesk',sans-serif;letter-spacing:.04em}
  #side{width:min(300px,86vw);z-index:40;padding-top:calc(18px + env(safe-area-inset-top,0px));box-shadow:20px 0 60px #000a}
  #sx{display:grid;place-items:center;position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:10px;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--tx);font-size:16px}
  .nav-open #side{transform:none}.nav-open #bd{display:block;position:fixed;inset:0;background:#000a;z-index:35}.nav-open{overflow:hidden}
- #app{padding:calc(76px + env(safe-area-inset-top,0px)) 14px 40px}footer{margin-left:0}
+ #app{margin-left:0;width:100%;max-width:100%;padding:calc(76px + env(safe-area-inset-top,0px)) 14px 40px}footer{margin-left:0;padding:20px 14px}
+ .hero>*{min-width:0}.hero .btn{max-width:100%}
  .hero{padding:22px}.mascot{width:70%}
  .lb li{font-size:14px}.btn{padding:12px 18px}
 }
@@ -133,3 +134,5 @@ h2{font-family:'Space Grotesk',sans-serif;letter-spacing:.04em}
 .cin{display:flex;gap:8px;padding:12px;border:1px solid var(--line);border-top:0;border-radius:0 0 20px 20px;background:var(--card)}.cin input{margin:0}.cin .btn{margin:0}
 .disc{color:var(--mu);margin-top:8px;font-size:12px}
 @media(max-width:860px){.chatw{height:calc(100vh - 120px)}.msg{max-width:94%}}
+
+html,body{overflow-x:hidden}
