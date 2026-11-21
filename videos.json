@@ -1,4 +1,18 @@
 [
-  {"topic":"virus","url":""},
-  {"title":"Esempio video extra","cat":"Extra","desc":"Descrizione","url":"video/esempio.mp4","tips":["Consiglio 1"]}
+  {
+    "topic": "virus",
+    "url": ""
+  },
+  {
+    "topic": "profili",
+    "url": ""
+  },
+  {
+    "topic": "truffe",
+    "url": ""
+  },
+  {
+    "topic": "ia",
+    "url": ""
+  }
 ]
