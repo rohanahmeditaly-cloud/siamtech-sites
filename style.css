@@ -136,3 +136,13 @@ h2{font-family:'Space Grotesk',sans-serif;letter-spacing:.04em}
 @media(max-width:860px){.chatw{height:calc(100vh - 120px)}.msg{max-width:94%}}
 
 html,body{overflow-x:hidden}
+
+/* ===== v4: icone personalizzate ===== */
+.ic{display:inline-block;object-fit:contain;-webkit-text-fill-color:initial}
+.nt .ic{width:32px;height:32px}
+.ico .ic{height:58px;width:auto;max-width:100%}
+.ico{display:flex;align-items:center;min-height:58px}.sosc .ico{justify-content:center;height:58px}
+.sosc .ico .ic{height:48px}
+h1 .ic{height:1.15em;width:auto;vertical-align:-.2em;margin-right:12px}
+.btn .ic{height:22px;width:auto;vertical-align:-5px;margin-right:8px;border-radius:5px}
+.botav img{width:100%;height:100%;object-fit:contain;display:block}
