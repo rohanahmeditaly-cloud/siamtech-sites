@@ -22,7 +22,7 @@
       ".read": true,
       "$id": {
         ".write": "!data.exists()",
-        ".validate": "newData.hasChildren(['a','b','t','cat','d'])",
+        ".validate": "newData.hasChildren(['r']) || newData.hasChildren(['a','b','t','cat','d'])",
         "t": { ".validate": "newData.isString() && newData.val().length <= 90" },
         "b": { ".validate": "newData.isString() && newData.val().length <= 400" },
         "a": { ".validate": "newData.isString() && newData.val().length <= 20" },
