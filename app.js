@@ -16,7 +16,24 @@ async function dput(p,v){if(ONLINE){const r=await fetch(`${DBU}/${p}.json`,{meth
 const BAD=/(cazz|merd|stronz|fuck|shit|puttan|troi|negro|bastard|vaffa|figa|minchia)/i;
 const nkey=n=>n.toLowerCase().replace(/[.$#\[\]\/\s]/g,'_');
 const okNick=v=>v.length>=2&&v.length<=14&&/^[\w\- àèéìòù]+$/i.test(v)&&!BAD.test(v);
-async function saveNick(v){v=(v||'').trim().slice(0,14);if(!okNick(v)){alert('Nickname non valido: usa 2-14 lettere o numeri, senza parolacce.');return false}SV('nick',v);try{await dput('nicks/'+nkey(v),{n:v,t:Date.now()})}catch{}return true}
+async function hashPin(key,pin){const t='shieldo:'+key+':'+pin;if(window.crypto&&crypto.subtle){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}let h=5381;for(const c of t)h=((h<<5)+h+c.charCodeAt(0))|0;return'x'+(h>>>0).toString(16)}
+function authModal(){return new Promise(res=>{
+ const m=document.createElement('div');m.className='mdl';
+ m.innerHTML=`<div class="card"><h2 style="margin-top:0">👤 Il tuo nickname</h2><p style="color:var(--mu);font-size:14px;margin:4px 0 10px">Nuovo? Scegli un nickname e un PIN di 4 cifre (ricordalo!). Già registrato? Scrivi lo stesso nickname e lo stesso PIN, anche da un altro dispositivo.</p><input id="an" maxlength="14" placeholder="Nickname (non il nome vero)" autocomplete="off"><input id="ap" type="password" inputmode="numeric" maxlength="4" placeholder="PIN di 4 cifre" autocomplete="off"><p id="ae" style="color:#f87171;min-height:22px;margin:4px 0"></p><button class="btn" id="ao">ENTRA / CREA</button><button class="btn g" id="ac">Annulla</button></div>`;
+ document.body.appendChild(m);const done=v=>{m.remove();res(v)};
+ const go=async()=>{const n=$('#an',m).value.trim(),p=$('#ap',m).value.trim(),er=$('#ae',m);
+  if(!okNick(n))return er.textContent='Nickname non valido: 2-14 lettere o numeri, senza parolacce.';
+  if(!/^\d{4}$/.test(p))return er.textContent='Il PIN deve avere 4 cifre.';
+  er.textContent='⏳ Controllo…';const k=nkey(n);let rec,h;
+  try{h=await hashPin(k,p);rec=await dget('nicks/'+k)}catch{return er.textContent='Connessione non riuscita. Riprova.'}
+  if(rec&&!rec.h)return er.textContent='Nickname già usato: scegline un altro.';
+  if(rec&&rec.h!==h)return er.textContent='Nickname già usato: PIN sbagliato.';
+  if(!rec){try{await dput('nicks/'+k,{n,t:Date.now(),h})}catch{return er.textContent='Non riesco a registrare il nickname. Riprova.'}}
+  const nm=rec?rec.n:n;SV('nick',nm);SV('nh',h);done(nm)};
+ $('#ao',m).onclick=go;$('#ap',m).onkeydown=e=>{if(e.key==='Enter')go()};$('#ac',m).onclick=()=>done(null);$('#an',m).focus()})}
+async function ensureLogin(){const n=LS('nick',''),h=LS('nh','');
+ if(n&&h){try{const r=await dget('nicks/'+nkey(n));if(r&&r.h===h)return n;SV('nick','');SV('nh','')}catch{return n}}
+ return await authModal()}
 const unsafe=v=>BAD.test(v)||/[\w.+-]+@[\w-]+\.\w+/.test(v)||/\d{8,}/.test(v.replace(/[\s-]/g,''))||/https?:\/\/|www\./i.test(v);
 const IC=n=>`<img class="ic" src="ic-${n}.png" alt="">`;
 const PAGES=[['home',IC('home'),'HOME'],['impara',IC('impara'),'IMPARA'],['quiz',IC('quiz'),'QUIZ'],['giochi',IC('giochi'),'GIOCHI'],['forum',IC('forum'),'FORUM'],['chat',IC('chat'),'CHIEDI A SHIELDO'],['scanner',IC('ai'),'AI SCANNER'],['sos',IC('sos'),'EMERGENZA']];
@@ -64,7 +81,7 @@ function home(){app.innerHTML=`<section class="hero"><div><span class="pill">�
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();window._dp=e});
 
 /* ===== IMPARA: i video delle lezioni li metti TU in videos.json; gli utenti possono solo aggiungere i propri link ===== */
-let VJ=[];fetch('videos.json').then(r=>r.json()).then(j=>{VJ=Array.isArray(j)?j:[];if(location.hash.startsWith('#impara'))route()}).catch(()=>{});
+let VJ=[];fetch('videos.json?v='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(j=>{VJ=Array.isArray(j)?j:[];if(location.hash.startsWith('#impara'))route()}).catch(()=>{});
 const ytid=u=>{const m=(u||'').match(/(?:youtu\.be\/|[?&]v=|embed\/|shorts\/)([\w-]{11})/);return m?m[1]:(/^[\w-]{11}$/.test(u||'')?u:null)};
 const yts=q=>'https://www.youtube.com/results?search_query='+encodeURIComponent(q);
 const allV=()=>[...TOPICS.map(t=>({...t,url:(VJ.find(v=>v.topic===t.id)||{}).url||t.yt})),...VJ.filter(v=>!v.topic&&v.url).map((v,i)=>({id:'x'+i,cat:v.cat||'Video',title:v.title||'Video',desc:v.desc||'',url:v.url,tips:v.tips||[],extra:1,q:v.title||'sicurezza online ragazzi'})),...LS('myv',[]).map((v,i)=>({id:'m'+i,cat:'I tuoi video',title:v.title,desc:'Aggiunto da te',url:v.url,tips:[],extra:1,mine:1,q:v.title+' sicurezza online'}))];
@@ -198,7 +215,7 @@ async function forum(){
  const load=async()=>{try{posts=merge((await dget('forum'))||{});err=false}catch{posts=merge({});err=true}};
  const rid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
  const cool=()=>Date.now()-LS('lastpost',0)<15000;
- const nick=async()=>{let n=LS('nick','');if(!n||!okNick(n)){const v=prompt('Scrivi il tuo nickname (2-14 caratteri, non il nome vero!)');if(v===null||!(await saveNick(v)))return null;n=LS('nick','')}return n};
+ const nick=ensureLogin;
  const draw=()=>{app.innerHTML=`<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start"><h1>FORUM</h1><div><button class="btn g" id="rf">↻ Aggiorna</button><button class="btn" id="nw">＋ NUOVA DOMANDA</button></div></div><p class="sub">Fai una domanda, racconta un dubbio o aiuta un altro ragazzo: insieme si impara meglio.</p>${SC('In questo forum nessuno è solo: chiedi aiuto senza vergogna e rispondi con gentilezza. Non scrivere mai nome vero, indirizzo, telefono o link.')}<div id="frm" class="card ${open?'':'hide'}"><input id="ft" maxlength="90" placeholder="Titolo della domanda"><textarea id="fb" rows="3" maxlength="400" placeholder="Racconta..."></textarea><select id="fc">${CATS.map(c=>`<option>${c}</option>`).join('')}</select><button class="btn" id="fs">PUBBLICA</button></div><div class="tabs">${['Tutti',...CATS].map(c=>`<button class="chip ${c===f?'on':''}" data-c="${c}">${c.toUpperCase()}</button>`).join('')}</div>${err?'<div class="card"><p>⚠️ Non riesco a caricare il forum. Controlla la connessione e premi “Aggiorna”.</p></div>':''}${posts.filter(p=>f==='Tutti'||p.cat===f).map(p=>`<div class="card" style="margin-bottom:14px"><span class="tag">${esc(p.cat)}</span> <small style="color:var(--mu)">${fmt(p.d)}</small>${p.ex?' <small style="color:var(--mu)">· esempio</small>':''}<h3>${esc(p.t)}</h3><p style="color:var(--tx)">${esc(p.b)}</p><small style="color:var(--mu)">di <b>${esc(p.a)}</b> · ${p.r.length} risposte</small>${p.r.map(r=>`<div class="rep"><b>${esc(r.a)}</b>: ${esc(r.b)}</div>`).join('')}<form data-id="${esc(p.id)}" style="display:flex;gap:8px;margin-top:8px"><input placeholder="Rispondi con gentilezza..." maxlength="250"><button class="btn" style="margin:0">Invia</button></form></div>`).join('')||(err?'':'<p class="sub">Nessuna domanda qui: scrivi la prima! 🙂</p>')}`;
   $('#nw').onclick=()=>{open=!open;$('#frm').classList.toggle('hide',!open)};
   $('#rf').onclick=async()=>{$('#rf').textContent='…';await load();draw()};
@@ -213,25 +230,30 @@ async function forum(){
 /* ===== GIOCHI + CLASSIFICHE TOP 10 (salvate nel browser) ===== */
 const GAMES=[['mem','🧩','MEMORY DELLA SICUREZZA','Trova le coppie di simboli e scopri il significato di ogni icona della sicurezza.'],['esc','🔐','ESCAPE ROOM DELLE TRUFFE','Quattro stanze, quattro trappole online: scegli bene e scappa fuori.'],['run','🏃','SCUDO RUNNER','Corri con la mascotte e schiva truffe, virus e link pericolosi.'],['vf','⚡','VERO O FALSO LAMPO','60 secondi: vero o falso? Più ne indovini, più punti fai.'],['pw','🔑','PASSWORD MASTER','Costruisci la password più forte rispettando tutte le regole.']];
 const medals=['🥇','🥈','🥉'];
-async function lbGet(g){const o=(await dget('lb/'+g))||{};return Object.values(o).filter(e=>e&&typeof e.p==='number').sort((a,b)=>b.p-a.p||a.t-b.t).slice(0,10)}
+async function lbGet(g){const o=(await dget('lb/'+g))||{};return Object.values(o).filter(e=>e&&typeof e.p==='number').sort((a,b)=>b.p-a.p||a.t-b.t).slice(0,30)}
 async function lbPut(g,n,p){const k=`lb/${g}/${nkey(n)}`;let c=null;try{c=await dget(k)}catch{}if(!c||p>c.p)await dput(k,{n,p,t:Date.now()})}
 async function renderLb(g,me){const h=$('#lb');if(!h)return null;h.innerHTML='<div class="card"><p>⏳ Carico la classifica…</p></div>';let l;
  try{l=await lbGet(g)}catch{if($('#lb'))$('#lb').innerHTML='<div class="card"><p>⚠️ Classifica non raggiungibile. Controlla la connessione e riprova.</p></div>';return null}
  if(!$('#lb'))return l;const pod=l.slice(0,3);
- $('#lb').innerHTML=`<div class="card"><span class="tag">🏆 Classifica TOP 10</span>${l.length?`<div class="podium">${[1,0,2].filter(i=>pod[i]).map(i=>`<div class="p${i+1}">${i==0?'<span class="crown">👑</span>':''}<b>${medals[i]}</b>${esc(pod[i].n)}<span>${pod[i].p}</span></div>`).join('')}</div><ol class="lb">${l.map((e,i)=>`<li class="r${i+1} ${me&&e.n===me?'me':''}"><em>${i<3?medals[i]:i+1}</em><b>${esc(e.n)}</b><span>${e.p}</span></li>`).join('')}</ol>`:'<p>Nessun record: sii il primo! 👑</p>'}<small style="color:var(--mu)">Il record resta finché qualcuno non lo supera.</small></div>`;return l}
-function confetti(n=80){const c=['#facc15','#fb923c','#2dd4bf','#f43f7a','#a855f7','#38bdf8'];for(let i=0;i<n;i++){const d=document.createElement('i');d.className='cf';d.style.cssText=`left:${Math.random()*100}vw;background:${c[i%6]};animation-duration:${2+Math.random()*2.5}s;animation-delay:${Math.random()*.6}s;border-radius:${i%2?'50%':'2px'}`;document.body.appendChild(d);setTimeout(()=>d.remove(),5000)}}
-function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3800)}
-async function endGame(g,p){let n=LS('nick','');while(!n){const v=prompt('Scrivi il tuo nickname (2-14 caratteri, non il nome vero!)');if(v===null)break;if(await saveNick(v))n=LS('nick','')}
+ $('#lb').innerHTML=`<div class="card"><span class="tag">🏆 Classifica TOP 30</span><p style="color:var(--mu);font-size:13px;margin:4px 0 0">I primi 10 sono evidenziati. 👑 1° · 🥈 2° · 🥉 3°</p>${l.length?`<div class="podium">${[1,0,2].filter(i=>pod[i]).map(i=>`<div class="p${i+1}">${i==0?'<span class="crown">👑</span>':''}<b>${medals[i]}</b>${esc(pod[i].n)}<span>${pod[i].p}</span></div>`).join('')}</div><ol class="lb">${l.map((e,i)=>`<li class="r${i+1} ${i<3?'':i<10?'t10':'rest'} ${me&&e.n===me?'me':''}"><em>${i<3?medals[i]:i+1}</em><b>${esc(e.n)}</b><span>${e.p}</span></li>`).join('')}</ol>`:'<p>Nessun record: sii il primo! 👑</p>'}<small style="color:var(--mu)">Il record resta finché qualcuno non lo supera.</small></div>`;return l}
+function confetti(n=80,c=['#facc15','#fb923c','#2dd4bf','#f43f7a','#a855f7','#38bdf8']){for(let i=0;i<n;i++){const d=document.createElement('i');d.className='cf';d.style.cssText=`left:${Math.random()*100}vw;background:${c[i%c.length]};animation-duration:${2+Math.random()*2.5}s;animation-delay:${Math.random()*.6}s;border-radius:${i%2?'50%':'2px'}`;document.body.appendChild(d);setTimeout(()=>d.remove(),5000)}}
+function rain(e,n){for(let i=0;i<n;i++){const d=document.createElement('i');d.className='cf em';d.textContent=e;d.style.cssText=`left:${Math.random()*95}vw;animation-duration:${2.5+Math.random()*2}s;animation-delay:${Math.random()*1}s`;document.body.appendChild(d);setTimeout(()=>d.remove(),6000)}}
+function toast(t,k=''){const d=document.createElement('div');d.className='toast '+k;d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3800)}
+async function endGame(g,p){const n=await ensureLogin();
  if(!n||p<=0){renderLb(g);return}
  try{await lbPut(g,n,p)}catch{toast('⚠️ Punteggio non salvato online')}
  const l=await renderLb(g,n);if(!l)return;
- if(l[0]&&l[0].n===n&&l[0].p===p){confetti(140);toast('👑 NUOVO RECORD, '+n+'!')}else if(l.slice(0,3).some(e=>e.n===n&&e.p===p)){confetti(40);toast('🏅 Sei nella TOP 3!')}}
+ const i=l.findIndex(e=>e.n===n&&e.p===p);
+ if(i===0){confetti(150);rain('👑',14);rain('✨',10);toast('👑 NUOVO RECORD, '+n+'! SEI IL NUMERO 1!','gold')}
+ else if(i===1){confetti(70,['#e2e8f0','#cbd5e1','#94a3b8','#38bdf8']);rain('🥈',8);toast('🥈 Secondo posto, '+n+'! Bravissimo!','silver')}
+ else if(i===2){confetti(50,['#d97706','#f59e0b','#b45309','#fb923c']);rain('🥉',7);toast('🥉 Terzo posto, '+n+'! Sul podio!','bronze')}
+ else if(i>=3&&i<10){toast('⭐ Sei nella TOP 10, '+n+'!','t10')}}
 function giochi(g){
- if(!g){app.innerHTML=`<h1>GIOCHI</h1><p class="sub">Allenati divertendoti: ogni gioco ti insegna a riconoscere un pericolo del web.</p>${SC('Scegli il tuo gioco preferito! Io tifo per te: qui si impara giocando.')}<div class="card" style="margin-bottom:18px"><b>👤 Il tuo nickname</b> <small style="color:var(--mu)">(usalo per le classifiche, non il nome vero)</small><div style="display:flex;gap:8px"><input id="nk" maxlength="14" placeholder="Nickname" value="${esc(LS('nick',''))}"><button class="btn" id="nb">SALVA</button></div></div><div class="grid">${GAMES.map(x=>`<div class="card gc"><div style="display:flex;justify-content:space-between"><span class="ico">${x[1]}</span><span class="tag">🏆 <span id="rc_${x[0]}">…</span></span></div><h3>${x[2]}</h3><p>${x[3]}</p><a class="btn" style="width:100%;text-align:center" href="#giochi/${x[0]}">${IC('giochi')} GIOCA →</a></div>`).join('')}</div>`;
+ if(!g){app.innerHTML=`<h1>GIOCHI</h1><p class="sub">Allenati divertendoti: ogni gioco ti insegna a riconoscere un pericolo del web.</p>${SC('Scegli il tuo gioco preferito! Io tifo per te: qui si impara giocando.')}<div class="card" style="margin-bottom:18px"><b>👤 Il tuo account</b> <small style="color:var(--mu)">(nickname + PIN di 4 cifre, per salvare i punteggi)</small><div id="acc" style="margin-top:10px"></div></div><div class="grid">${GAMES.map(x=>`<div class="card gc"><div style="display:flex;justify-content:space-between"><span class="ico">${x[1]}</span><span class="tag">🏆 <span id="rc_${x[0]}">…</span></span></div><h3>${x[2]}</h3><p>${x[3]}</p><a class="btn" style="width:100%;text-align:center" href="#giochi/${x[0]}">${IC('giochi')} GIOCA →</a></div>`).join('')}</div>`;
   GAMES.forEach(async x=>{let t='nessun record';try{const l=await lbGet(x[0]);if(l[0])t=l[0].p+' · '+l[0].n}catch{t='—'}const e=$('#rc_'+x[0]);if(e)e.textContent=t});
-  $('#nb').onclick=async()=>{if(await saveNick($('#nk').value))$('#nb').textContent='SALVATO ✓'};return}
+  const acc=()=>{const n=LS('nick',''),h=LS('nh','');$('#acc').innerHTML=n&&h?`Ciao <b>${esc(n)}</b> 👋 <button class="btn g" id="lo" style="margin:0 0 0 8px">Esci</button>`:'<button class="btn" id="lg" style="margin:0">ENTRA / CREA NICKNAME</button>';if($('#lo'))$('#lo').onclick=()=>{SV('nick','');SV('nh','');acc()};if($('#lg'))$('#lg').onclick=async()=>{await authModal();acc()}};acc();return}
  const G=GAMES.find(x=>x[0]===g)||GAMES[0];
- app.innerHTML=`<a href="#giochi" class="back">← Tutti i giochi</a><h1>${G[2]}</h1><p class="sub">${G[3]} Giochi come: <b>${esc(LS('nick','(chiederò il nickname a fine partita)'))}</b></p><div class="two"><div id="gm"></div><div id="lb"></div></div>`;
+ app.innerHTML=`<a href="#giochi" class="back">← Tutti i giochi</a><h1>${G[2]}</h1><p class="sub">${G[3]} Giochi come: <b>${esc(LS('nick','(a fine partita ti chiederò nickname e PIN)'))}</b></p><div class="two"><div id="gm"></div><div id="lb"></div></div>`;
  const gm=$('#gm');renderLb(g,LS('nick',''));
  if(g==='mem'){const P=[['🔒','Lucchetto: i tuoi dati sono protetti'],['🔑','Password: tienila segreta'],['🛡️','Scudo: antivirus attivo'],['📶','Wi-Fi pubblico: attenzione ai dati'],['⚠️','Allarme: possibile truffa'],['🎣','Phishing: esca per rubare password'],['🦠','Virus: programma dannoso'],['🤖','IA: contenuto generato']];
   const d=[...P,...P].sort(()=>Math.random()-.5);let a=null,lock=false,m=0,fo=0;
