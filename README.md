@@ -34,3 +34,9 @@ Gli utenti possono aggiungere solo i propri link (visibili solo a loro) e usare 
 
 ## Chatbot "Chiedi a Shieldo"
 È un assistente a regole che funziona offline: risponde su virus, password, truffe, profili falsi, IA, privacy, cyberbullismo, ricatti con foto, giochi online ed emergenze. Controlla link incollati, fa mini-quiz e, se rileva parole di pericolo, indirizza a un adulto, al 112 e al Telefono Azzurro 19696. Per aggiungere risposte modifica l'array `KB` in `app.js`.
+
+## Nickname + PIN
+Per salvare punteggi e scrivere nel forum l'utente sceglie un nickname e un PIN di 4 cifre (salvato come impronta, non in chiaro).
+Con lo stesso nickname e PIN può rientrare da qualsiasi dispositivo. È una protezione leggera, non un login vero.
+Se un utente dimentica il PIN: Firebase → Dati → `nicks` → elimina la voce del suo nickname (poi può registrarlo di nuovo).
+Dopo aver aggiornato `firebase-rules.json` ricordati di ripubblicare le regole in Firebase e di cancellare i vecchi nickname di prova (voci in `nicks` senza il campo `h`), oltre a eventuali dati di prova in `lb` e `forum`.
