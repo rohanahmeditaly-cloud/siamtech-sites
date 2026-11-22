@@ -153,3 +153,34 @@ h1.hi{display:flex;align-items:center;gap:12px;background:none;-webkit-text-fill
 h1.hi .ic{height:1.3em;width:auto;margin:0;flex:none}
 h1.hi span{background:linear-gradient(90deg,#fff 30%,#7dd3fc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 @media(max-width:860px){h1.hi{font-size:clamp(22px,6.6vw,36px);gap:10px}h1.hi .ic{height:1.5em}}
+
+.mdl{position:fixed;inset:0;background:#000c;z-index:200;display:grid;place-items:center;padding:16px}.mdl .card{max-width:420px;width:100%}
+
+/* ===== v6: premi TOP 3 diversi + TOP 30 ===== */
+.cf.em{width:auto;height:auto;background:none;font-size:30px;font-style:normal;border-radius:0}
+.toast.gold{background:linear-gradient(90deg,#fde047,#f59e0b);animation:pop .5s,glow 1.2s ease-in-out infinite .5s}
+.toast.silver{background:linear-gradient(90deg,#e2e8f0,#94a3b8);color:#0f172a}
+.toast.bronze{background:linear-gradient(90deg,#f59e0b,#b45309);color:#fff}
+.toast.t10{background:linear-gradient(90deg,#2dd4bf,#a78bfa);color:#04121a}
+/* podio */
+.podium .p1 b{animation:bob 1.2s ease-in-out infinite}
+.podium .p2{background:linear-gradient(110deg,#cbd5e133 30%,#ffffff66 50%,#cbd5e133 70%);background-size:250% 100%;animation:sweep 2.6s linear infinite}
+.podium .p2 b{animation:pulse 1.8s ease-in-out infinite}
+.podium .p3{animation:warm 2.2s ease-in-out infinite}.podium .p3 b{animation:wig 1.6s ease-in-out infinite}
+@keyframes sweep{to{background-position:-250% 0}}@keyframes pulse{50%{transform:scale(1.25)}}
+@keyframes wig{0%,100%{transform:rotate(-12deg)}50%{transform:rotate(12deg)}}@keyframes warm{50%{box-shadow:0 0 22px #d97722aa}}
+@keyframes twinkle{0%,100%{opacity:.2;transform:scale(.6)}50%{opacity:1;transform:scale(1.2)}}
+/* righe */
+.lb li{position:relative}
+.lb li.r1{border:1px solid #facc15;box-shadow:0 0 18px #facc1566;font-size:1.08em;padding:12px}
+.lb li.r1 b{background:linear-gradient(90deg,#fde047,#f59e0b,#fde047);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:sweep 2.2s linear infinite;font-weight:800}
+.lb li.r1 em{font-size:1.4em;animation:bob 1.2s ease-in-out infinite}
+.lb li.r1::after{content:"✨";position:absolute;right:46px;top:2px;animation:twinkle 1.4s ease-in-out infinite}
+.lb li.r2{background:linear-gradient(110deg,#0e1430 30%,#cbd5e133 50%,#0e1430 70%);background-size:250% 100%;animation:sweep 3s linear infinite}
+.lb li.r2 b{color:#e2e8f0;font-weight:800}.lb li.r2 em{animation:pulse 1.8s ease-in-out infinite}
+.lb li.r3{animation:warm 2.2s ease-in-out infinite}.lb li.r3 b{color:#fbbf24;font-weight:800}.lb li.r3 em{animation:wig 1.6s ease-in-out infinite}
+.lb li.t10{border-left:4px solid #a78bfa;background:linear-gradient(90deg,#a78bfa22,#0e1430)}
+.lb li.t10 b{background:linear-gradient(90deg,#2dd4bf,#a78bfa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:700}
+.lb li.t10 em{color:#a78bfa}
+.lb li.rest{opacity:.85}
+.lb li.me{outline:2px solid var(--te)}
